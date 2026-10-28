@@ -52,6 +52,11 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
+  --color-hero: var(--hero);
+  --color-hero-foreground: var(--hero-foreground);
+  --color-hero-overlay: var(--hero-overlay);
+  --font-display: "DM Serif Display", serif;
+  --font-sans: "Work Sans", sans-serif;
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
@@ -95,6 +100,17 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+  --background: oklch(0.97 0.015 80);
+  --foreground: oklch(0.22 0.03 50);
+  --card: oklch(0.99 0.01 80);
+  --primary: oklch(0.68 0.15 60);
+  --primary-foreground: oklch(0.18 0.03 50);
+  --secondary: oklch(0.92 0.03 75);
+  --muted-foreground: oklch(0.48 0.03 55);
+  --border: oklch(0.86 0.03 70);
+  --hero: oklch(0.2 0.03 50);
+  --hero-foreground: oklch(0.97 0.015 80);
+  --hero-overlay: oklch(0.15 0.03 50 / 0.72);
 }
 
 .dark {
