@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Toaster, toast } from "sonner";
 import bgSecador from "@/assets/powerbi/Serragem_secador05980170169090138.png";
 import bgPrevisao from "@/assets/powerbi/Estoque_e_previs_o8578798908874332.png";
 import { DashboardHeader, type DashboardTab } from "./DashboardHeader";
@@ -7,25 +8,36 @@ import { EntreguePrevistoMtdChart } from "./EntreguePrevistoMtdChart";
 import { VolumeFornecedorChart } from "./VolumeFornecedorChart";
 import { VolumeSemanaChart } from "./VolumeSemanaChart";
 import { EstoquePrevisaoView } from "./EstoquePrevisaoView";
+import { parseExcelData, DEFAULT_DATASET, type DashboardDataset } from "@/lib/excel-parser";
 
-import {
-  SERRAGEM_SECADOR_KPIS,
-  SERRAGEM_SECADOR_MTD,
-  SERRAGEM_SECADOR_FORNECEDORES,
-  SERRAGEM_SECADOR_SEMANAS,
-  SERRAGEM_SECA_KPIS,
-  SERRAGEM_SECA_MTD,
-  SERRAGEM_SECA_FORNECEDORES,
-  SERRAGEM_SECA_SEMANAS,
-} from "@/data/serragem-data";
+const STORAGE_KEY = "caltec_serragem_dashboard_data_v1";
 
 export function PowerBiDashboard() {
   const [currentTab, setCurrentTab] = useState<DashboardTab>("secador");
   const [selectedSemana, setSelectedSemana] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Available weeks
-  const availableSemanas = [34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50];
+  // Load dataset from localStorage or fallback to DEFAULT_DATASET
+  const [dataset, setDataset] = useState<DashboardDataset>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.secadorKpis && parsed.estoquePrevisaoSemanas) {
+            return parsed as DashboardDataset;
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao carregar dados salvos:", err);
+      }
+    }
+    return DEFAULT_DATASET;
+  });
+
+  const isCustomData = dataset.sourceFileName !== DEFAULT_DATASET.sourceFileName;
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -47,19 +59,104 @@ export function PowerBiDashboard() {
     return () => document.removeEventListener("fullscreenchange", handleFsChange);
   }, []);
 
+  // Handle Excel file import
+  const handleImportFile = async (file: File) => {
+    try {
+      setIsLoading(true);
+      toast.info("Processando planilha...", { description: file.name });
+
+      const buffer = await file.arrayBuffer();
+      const newDataset = parseExcelData(buffer, file.name);
+
+      setDataset(newDataset);
+      setSelectedSemana(null);
+
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newDataset));
+      } catch (e) {
+        console.warn("Não foi possível salvar no localStorage:", e);
+      }
+
+      toast.success("Planilha importada com sucesso!", {
+        description: `${newDataset.secadorFornecedores.length} fornecedores e ${newDataset.estoquePrevisaoSemanas.length} semanas atualizadas.`,
+      });
+    } catch (err: unknown) {
+      console.error("Erro ao importar planilha:", err);
+      const msg = err instanceof Error ? err.message : "Erro desconhecido";
+      toast.error("Erro ao importar planilha", {
+        description: `Verifique se o arquivo é um Excel válido (.xlsx): ${msg}`,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetData = () => {
+    setDataset(DEFAULT_DATASET);
+    setSelectedSemana(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.warn("Erro ao remover do localStorage:", e);
+    }
+    toast.info("Dados restaurados para os valores padrão.");
+  };
+
+  // Drag and drop support
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && (file.name.endsWith(".xlsx") || file.name.endsWith(".xls"))) {
+      handleImportFile(file);
+    } else {
+      toast.error("Formato inválido. Arraste um arquivo .xlsx");
+    }
+  };
+
   // Filter weekly data if week is selected
   const secadorSemanasData = selectedSemana
-    ? SERRAGEM_SECADOR_SEMANAS.filter((s) => s.semana === selectedSemana)
-    : SERRAGEM_SECADOR_SEMANAS;
+    ? dataset.secadorSemanas.filter((s) => s.semana === selectedSemana)
+    : dataset.secadorSemanas;
 
   const secaSemanasData = selectedSemana
-    ? SERRAGEM_SECA_SEMANAS.filter((s) => s.semana === selectedSemana)
-    : SERRAGEM_SECA_SEMANAS;
+    ? dataset.secaSemanas.filter((s) => s.semana === selectedSemana)
+    : dataset.secaSemanas;
 
   const currentBg = currentTab === "previsao" ? bgPrevisao : bgSecador;
 
   return (
-    <div className="relative min-h-screen w-full bg-[#030712] text-white overflow-x-hidden selection:bg-[#1b91ff]/30">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="relative min-h-screen w-full bg-[#030712] text-white overflow-x-hidden selection:bg-[#1b91ff]/30"
+    >
+      <Toaster position="top-right" richColors theme="dark" />
+
+      {/* Drag & drop overlay indicator */}
+      {isDragging && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md border-4 border-dashed border-emerald-400">
+          <div className="flex flex-col items-center gap-2 rounded-2xl bg-[#0b1320] p-8 text-center shadow-2xl border border-white/20">
+            <span className="text-4xl">📊</span>
+            <h3 className="text-xl font-bold text-white">Solte a planilha aqui para atualizar</h3>
+            <p className="text-sm text-zinc-400">
+              Acompanhamento de Recebimento de Cal e Serragem Secador (.xlsx)
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Background with real Power BI Caltec backdrop */}
       <div
         className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700 opacity-30"
@@ -79,9 +176,15 @@ export function PowerBiDashboard() {
           }}
           selectedSemana={selectedSemana}
           onSemanaChange={setSelectedSemana}
-          availableSemanas={availableSemanas}
+          availableSemanas={dataset.availableSemanas}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
+          onImportFile={handleImportFile}
+          onResetData={handleResetData}
+          isCustomData={isCustomData}
+          sourceFileName={dataset.sourceFileName}
+          lastUpdated={dataset.lastUpdated}
+          isLoading={isLoading}
         />
 
         {/* 1. SERRAGEM SECADOR TAB */}
@@ -92,7 +195,7 @@ export function PowerBiDashboard() {
               {/* Entregue x Previsto - MTD */}
               <div className="lg:col-span-7">
                 <EntreguePrevistoMtdChart
-                  data={SERRAGEM_SECADOR_MTD}
+                  data={dataset.secadorMtd}
                   className="h-[320px] sm:h-[350px]"
                 />
               </div>
@@ -100,7 +203,7 @@ export function PowerBiDashboard() {
               {/* Volume Acumulado Por Fornecedor - YTD */}
               <div className="lg:col-span-5">
                 <VolumeFornecedorChart
-                  data={SERRAGEM_SECADOR_FORNECEDORES}
+                  data={dataset.secadorFornecedores}
                   variant="vertical"
                   className="h-[320px] sm:h-[350px]"
                 />
@@ -113,23 +216,27 @@ export function PowerBiDashboard() {
               <div className="flex flex-col justify-between gap-3 lg:col-span-3">
                 <KpiCard
                   label="Volume entregue YTD"
-                  value={SERRAGEM_SECADOR_KPIS.volumeEntregueYTD}
+                  value={dataset.secadorKpis.volumeEntregueYTD}
                   unit="ton"
                   status="default"
                   subtext="Total consolidado 2026"
                 />
                 <KpiCard
                   label="Volume previsto YTD"
-                  value={SERRAGEM_SECADOR_KPIS.volumePrevistoYTD}
+                  value={dataset.secadorKpis.volumePrevistoYTD}
                   unit="ton"
                   status="default"
                   subtext="Meta acumulada"
                 />
                 <KpiCard
                   label="% Atendido"
-                  value={`${SERRAGEM_SECADOR_KPIS.percentAtendido}%`}
-                  status="danger"
-                  subtext="Meta recomendada: ≥ 90%"
+                  value={`${dataset.secadorKpis.percentAtendido}%`}
+                  status={dataset.secadorKpis.percentAtendido >= 90 ? "success" : "danger"}
+                  subtext={
+                    dataset.secadorKpis.percentAtendido >= 90
+                      ? "Dentro da meta planejada"
+                      : "Meta recomendada: ≥ 90%"
+                  }
                 />
               </div>
 
@@ -154,7 +261,7 @@ export function PowerBiDashboard() {
               {/* Entregue x Previsto - MTD */}
               <div className="lg:col-span-6">
                 <EntreguePrevistoMtdChart
-                  data={SERRAGEM_SECA_MTD}
+                  data={dataset.secaMtd}
                   className="h-[340px] sm:h-[370px]"
                 />
               </div>
@@ -162,7 +269,7 @@ export function PowerBiDashboard() {
               {/* Volume Acumulado Por Fornecedor - YTD (horizontal) */}
               <div className="lg:col-span-6">
                 <VolumeFornecedorChart
-                  data={SERRAGEM_SECA_FORNECEDORES}
+                  data={dataset.secaFornecedores}
                   variant="horizontal"
                   className="h-[340px] sm:h-[370px]"
                 />
@@ -175,23 +282,27 @@ export function PowerBiDashboard() {
               <div className="flex flex-col justify-between gap-3 lg:col-span-3">
                 <KpiCard
                   label="Volume entregue YTD"
-                  value={SERRAGEM_SECA_KPIS.volumeEntregueYTD}
+                  value={dataset.secaKpis.volumeEntregueYTD}
                   unit="ton"
                   status="default"
                   subtext="Total consolidado 2026"
                 />
                 <KpiCard
                   label="Volume previsto YTD"
-                  value={SERRAGEM_SECA_KPIS.volumePrevistoYTD}
+                  value={dataset.secaKpis.volumePrevistoYTD}
                   unit="ton"
                   status="default"
                   subtext="Meta acumulada"
                 />
                 <KpiCard
                   label="% Atendido"
-                  value={`${SERRAGEM_SECA_KPIS.percentAtendido}%`}
-                  status="success"
-                  subtext="Meta superada em 4%"
+                  value={`${dataset.secaKpis.percentAtendido}%`}
+                  status={dataset.secaKpis.percentAtendido >= 100 ? "success" : "warning"}
+                  subtext={
+                    dataset.secaKpis.percentAtendido >= 100
+                      ? "Meta superada com sucesso"
+                      : "Meta recomendada: ≥ 90%"
+                  }
                 />
               </div>
 
@@ -227,7 +338,7 @@ export function PowerBiDashboard() {
             <span>Dashboard Gerencial Integrado</span>
           </div>
           <div className="flex items-center gap-4 text-[10px]">
-            <span>Fonte de dados: SERRAGEM 2026.pbix</span>
+            <span>Fonte: {dataset.sourceFileName}</span>
             <span>•</span>
             <span className="text-[#38bdf8]">Semana Atual: 43</span>
           </div>
@@ -236,4 +347,3 @@ export function PowerBiDashboard() {
     </div>
   );
 }
-

@@ -28,4 +28,3 @@ describe("Power BI Data Integrity", () => {
     expect(sem43?.previsaoRecebimento).toBe(1195);
   });
 });
-
