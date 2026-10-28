@@ -71,7 +71,7 @@ export function EntreguePrevistoMtdChart({
   return (
     <ChartContainer title={title} legend={legend} className={className}>
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 32, right: 20, left: 0, bottom: 5 }}>
+        <ComposedChart data={data} margin={{ top: 36, right: 20, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#ffffff15" vertical={false} />
           <XAxis
             dataKey="mes"
@@ -85,6 +85,7 @@ export function EntreguePrevistoMtdChart({
             tick={{ fill: "#94a3b8", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
+            domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]}
             tickFormatter={(v) => `${(v / 1000).toFixed(1)}k`}
           />
           <Tooltip content={<CustomTooltip />} />

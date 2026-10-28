@@ -19,23 +19,23 @@ export function PowerBiDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Load dataset from localStorage or fallback to DEFAULT_DATASET
-  const [dataset, setDataset] = useState<DashboardDataset>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed && parsed.secadorKpis && parsed.estoquePrevisaoSemanas) {
-            return parsed as DashboardDataset;
-          }
+  // Initialize with DEFAULT_DATASET to ensure clean SSR hydration
+  const [dataset, setDataset] = useState<DashboardDataset>(DEFAULT_DATASET);
+
+  // Load dataset from localStorage after mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.secadorKpis && parsed.estoquePrevisaoSemanas) {
+          setDataset(parsed as DashboardDataset);
         }
-      } catch (err) {
-        console.error("Erro ao carregar dados salvos:", err);
       }
+    } catch (err) {
+      console.error("Erro ao carregar dados salvos:", err);
     }
-    return DEFAULT_DATASET;
-  });
+  }, []);
 
   const isCustomData = dataset.sourceFileName !== DEFAULT_DATASET.sourceFileName;
 

@@ -84,7 +84,7 @@ export function VolumeSemanaChart({
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart
           data={data}
-          margin={{ top: 32, right: 20, left: 0, bottom: 5 }}
+          margin={{ top: 36, right: 20, left: 0, bottom: 5 }}
           onClick={(state) => {
             if (state && state.activeLabel !== undefined && onSelectSemana) {
               const clickedSemana = Number(state.activeLabel);
@@ -105,6 +105,7 @@ export function VolumeSemanaChart({
             tick={{ fill: "#94a3b8", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
+            domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.15)]}
           />
           <Tooltip content={<CustomWeeklyTooltip hasValorMedio={hasValorMedio} />} />
           <Bar
