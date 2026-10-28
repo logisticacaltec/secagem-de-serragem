@@ -39,6 +39,7 @@ interface TooltipPayloadItem {
   name?: string;
   value?: number | string;
   dataKey?: string;
+  payload?: SemanaData;
 }
 
 interface CustomTooltipProps {
@@ -100,25 +101,13 @@ export function VolumeSemanaChart({
             tickLine={false}
           />
           <YAxis
-            yAxisId="left"
             stroke="#94a3b8"
             tick={{ fill: "#94a3b8", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
           />
-          <YAxis
-            yAxisId="right"
-            orientation="right"
-            stroke="#ff7a29"
-            domain={[0, 160]}
-            tick={{ fill: "#ff7a29", fontSize: 10 }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={(v) => `${v}%`}
-          />
-          <Tooltip content={<CustomWeeklyTooltip />} />
+          <Tooltip content={<CustomWeeklyTooltip hasValorMedio={hasValorMedio} />} />
           <Bar
-            yAxisId="left"
             dataKey="volumeEntregue"
             name="Volume entregue"
             fill="#1b91ff"
@@ -127,7 +116,6 @@ export function VolumeSemanaChart({
             label={<CustomWeeklyBarLabel />}
           />
           <Bar
-            yAxisId="left"
             dataKey="volumePrevisto"
             name="Volume previsto"
             fill="#102e9e"
@@ -137,7 +125,6 @@ export function VolumeSemanaChart({
           />
           {hasValorMedio && (
             <Bar
-              yAxisId="left"
               dataKey="valorMedio"
               name="Valor médio produto"
               fill="#94a3b8"
@@ -146,13 +133,13 @@ export function VolumeSemanaChart({
               label={<CustomValorMedioBarLabel />}
             />
           )}
+          {/* A linha de porcentagem segue a altura do volume entregue (recebido) */}
           <Line
-            yAxisId="right"
             type="monotone"
-            dataKey="percentAtendido"
+            dataKey="volumeEntregue"
             name="% Atendido"
             stroke="#ff7a29"
-            strokeWidth={3}
+            strokeWidth={2.5}
             dot={<CustomWeeklyDot />}
             activeDot={{ r: 6, fill: "#ff7a29", stroke: "#ffffff" }}
           />
@@ -200,7 +187,8 @@ function CustomWeeklyDot(props: DotProps) {
   const { cx, cy, payload } = props;
   if (cx === undefined || cy === undefined || !payload) return null;
   const pct = payload.percentAtendido;
-  const isTarget = pct >= 90;
+  // Verde se tiver 100% ou acima, e vermelho se tiver abaixo de 100%
+  const isTarget = pct >= 100;
   return (
     <g>
       <circle cx={cx} cy={cy} r={4.5} fill="#ff7a29" stroke="#ffffff" strokeWidth={1.5} />
@@ -210,7 +198,7 @@ function CustomWeeklyDot(props: DotProps) {
           height={16}
           rx={4}
           fill={isTarget ? "#22c55e" : "#ef4444"}
-          fillOpacity={0.9}
+          fillOpacity={0.95}
         />
         <text
           x={17}
@@ -228,32 +216,70 @@ function CustomWeeklyDot(props: DotProps) {
   );
 }
 
-function CustomWeeklyTooltip({ active, payload, label }: CustomTooltipProps) {
+function CustomWeeklyTooltip({
+  active,
+  payload,
+  label,
+  hasValorMedio,
+}: CustomTooltipProps & { hasValorMedio?: boolean }) {
   if (!active || !payload || !payload.length) return null;
+  const itemData = payload[0]?.payload;
+  const pct = itemData?.percentAtendido ?? 0;
+  const isTarget = pct >= 100;
+
   return (
     <div className="rounded-lg border border-white/20 bg-[#070d18]/95 p-3 text-xs shadow-2xl backdrop-blur-md">
       <div className="mb-1.5 border-b border-white/10 pb-1 font-bold text-white uppercase tracking-wider">
         Semana {label}
       </div>
-      {payload.map((entry, i: number) => {
-        const isPct = entry.dataKey === "percentAtendido";
-        const isVal = entry.dataKey === "valorMedio";
-        return (
-          <div key={i} className="flex items-center justify-between gap-4 py-0.5">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between gap-4 py-0.5">
+          <span className="flex items-center gap-1.5 text-zinc-300">
+            <span className="h-2 w-2 rounded-full bg-[#1b91ff]" />
+            Volume entregue:
+          </span>
+          <span className="font-mono font-bold text-white">
+            {Number(itemData?.volumeEntregue || 0).toLocaleString("pt-BR")} ton
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between gap-4 py-0.5">
+          <span className="flex items-center gap-1.5 text-zinc-300">
+            <span className="h-2 w-2 rounded-full bg-[#102e9e]" />
+            Volume previsto:
+          </span>
+          <span className="font-mono font-bold text-white">
+            {Number(itemData?.volumePrevisto || 0).toLocaleString("pt-BR")} ton
+          </span>
+        </div>
+
+        {hasValorMedio && itemData?.valorMedio && (
+          <div className="flex items-center justify-between gap-4 py-0.5">
             <span className="flex items-center gap-1.5 text-zinc-300">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
-              {entry.name}:
+              <span className="h-2 w-2 rounded-full bg-[#94a3b8]" />
+              Valor médio produto:
             </span>
-            <span className="font-mono font-bold text-white">
-              {isPct
-                ? `${entry.value}%`
-                : isVal
-                  ? `R$ ${Number(entry.value).toFixed(2).replace(".", ",")}`
-                  : `${Number(entry.value).toLocaleString("pt-BR")} ton`}
+            <span className="font-mono font-bold text-zinc-200">
+              R$ {Number(itemData.valorMedio).toFixed(2).replace(".", ",")}
             </span>
           </div>
-        );
-      })}
+        )}
+
+        <div className="flex items-center justify-between gap-4 border-t border-white/10 pt-1">
+          <span className="flex items-center gap-1.5 text-zinc-300">
+            <span className="h-2 w-2 rounded-full bg-[#ff7a29]" />% Atendido:
+          </span>
+          <span
+            className={`font-mono font-extrabold px-1.5 py-0.5 rounded text-[11px] ${
+              isTarget
+                ? "bg-emerald-950 text-emerald-400 border border-emerald-500/30"
+                : "bg-red-950 text-red-400 border border-red-500/30"
+            }`}
+          >
+            {pct}%
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
