@@ -73,7 +73,7 @@ export function VolumeFornecedorChart({
 
                   {/* Valor Médio badge */}
                   {item.valorMedio && (
-                    <div className="ml-2 flex items-center rounded bg-slate-700/80 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm border border-white/10">
+                    <div className="ml-2 flex items-center rounded bg-slate-800/90 px-1.5 py-0.5 text-[10.5px] font-bold text-white shadow-sm border border-white/10">
                       R$ {item.valorMedio}
                     </div>
                   )}

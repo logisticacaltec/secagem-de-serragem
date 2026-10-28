@@ -174,10 +174,10 @@ function CustomValorMedioBarLabel(props: BarLabelProps) {
     <text
       x={x + width / 2}
       y={y - 6}
-      fill="#cbd5e1"
+      fill="#ffffff"
       textAnchor="middle"
-      fontSize={8}
-      fontWeight={600}
+      fontSize={10.5}
+      fontWeight={700}
     >
       R$ {Math.round(Number(value))}
     </text>
