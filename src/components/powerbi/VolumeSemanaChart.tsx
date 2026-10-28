@@ -190,10 +190,13 @@ function CustomWeeklyDot(props: DotProps) {
   const pct = payload.percentAtendido;
   // Verde se tiver 100% ou acima, e vermelho se tiver abaixo de 100%
   const isTarget = pct >= 100;
+  // Regra: abaixo do ponto se < 100%, acima do ponto se >= 100%
+  const badgeY = isTarget ? cy - 23 : cy + 8;
+
   return (
     <g>
       <circle cx={cx} cy={cy} r={4.5} fill="#ff7a29" stroke="#ffffff" strokeWidth={1.5} />
-      <g transform={`translate(${cx - 17}, ${cy - 23})`}>
+      <g transform={`translate(${cx - 17}, ${badgeY})`}>
         <rect
           width={34}
           height={16}
