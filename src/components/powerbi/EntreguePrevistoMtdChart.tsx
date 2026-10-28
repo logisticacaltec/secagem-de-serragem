@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -51,19 +51,43 @@ export function EntreguePrevistoMtdChart({
   title = "ENTREGUE x PREVISTO - MTD",
   className = "",
 }: EntreguePrevistoMtdChartProps) {
+  const [hoveredMes, setHoveredMes] = useState<string | null>(null);
+
+  const activeItem = hoveredMes ? data.find((d) => d.mes === hoveredMes) : null;
+  const totalEntregue = data.reduce((acc, d) => acc + d.volumeEntregue, 0);
+  const totalPrevisto = data.reduce((acc, d) => acc + d.volumePrevisto, 0);
+  const totalPct = totalPrevisto > 0 ? Math.round((totalEntregue / totalPrevisto) * 100) : 0;
+
+  const valEntregue = activeItem ? activeItem.volumeEntregue : totalEntregue;
+  const valPrevisto = activeItem ? activeItem.volumePrevisto : totalPrevisto;
+  const valPct = activeItem ? activeItem.variacaoPercent : totalPct;
+
   const legend = (
-    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs">
-      <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-sm bg-[#1b91ff]" />
-        <span className="text-zinc-200">Volume entregue</span>
+        <span className="text-zinc-300 font-medium">Volume entregue:</span>
+        <span className="font-mono font-bold text-white">
+          {valEntregue.toLocaleString("pt-BR")} ton
+        </span>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-sm bg-[#102e9e]" />
-        <span className="text-zinc-200">Volume previsto</span>
+        <span className="text-zinc-300 font-medium">Volume previsto:</span>
+        <span className="font-mono font-bold text-white">
+          {valPrevisto.toLocaleString("pt-BR")} ton
+        </span>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-full bg-[#ff7a29]" />
-        <span className="text-zinc-200">% Variação X Previsto</span>
+        <span className="text-zinc-300 font-medium">% Variação:</span>
+        <span
+          className={`font-mono font-extrabold ${
+            valPct >= 100 ? "text-emerald-400" : "text-red-400"
+          }`}
+        >
+          {valPct}%
+        </span>
       </div>
     </div>
   );
@@ -71,7 +95,16 @@ export function EntreguePrevistoMtdChart({
   return (
     <ChartContainer title={title} legend={legend} className={className}>
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 36, right: 20, left: 0, bottom: 5 }}>
+        <ComposedChart
+          data={data}
+          margin={{ top: 36, right: 20, left: 0, bottom: 5 }}
+          onMouseMove={(state) => {
+            if (state && state.activeLabel !== undefined) {
+              setHoveredMes(String(state.activeLabel));
+            }
+          }}
+          onMouseLeave={() => setHoveredMes(null)}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#ffffff15" vertical={false} />
           <XAxis
             dataKey="mes"

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -61,41 +61,66 @@ export function EstoquePrevisaoView({
   selectedSemana,
   onSelectSemana,
 }: EstoquePrevisaoViewProps) {
-  const currentWeekData =
-    (selectedSemana ? data.find((s) => s.semana === selectedSemana) : undefined) ||
+  const [hoveredSemana, setHoveredSemana] = useState<number | null>(null);
+
+  const activeSemana = hoveredSemana ?? selectedSemana ?? 43;
+  const activeData =
+    data.find((s) => s.semana === activeSemana) ||
     data.find((s) => s.isCurrentWeek) ||
     data[data.length - 1];
 
+  const currentWeekData = activeData;
+
   const topLegend = (
-    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs">
-      <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-sm bg-[#102e9e]" />
-        <span className="text-zinc-200">ESTOQUE</span>
+        <span className="text-zinc-300 font-medium">ESTOQUE</span>
+        <span className="font-mono font-bold text-white">
+          {activeData.estoque.toLocaleString("pt-BR")}
+        </span>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-full bg-[#38bdf8]" />
-        <span className="text-zinc-200">ESTOQUE B 01</span>
+        <span className="text-zinc-300 font-medium">ESTOQUE B 01</span>
+        <span className="font-mono font-bold text-[#38bdf8]">
+          {activeData.estoqueB01.toLocaleString("pt-BR")}
+        </span>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-full bg-[#84cc16]" />
-        <span className="text-zinc-200">ESTOQUE B 02</span>
+        <span className="text-zinc-300 font-medium">ESTOQUE B 02</span>
+        <span className="font-mono font-bold text-[#a3e635]">
+          {activeData.estoqueB02.toLocaleString("pt-BR")}
+        </span>
       </div>
     </div>
   );
 
   const bottomLegend = (
-    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs">
-      <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-full bg-[#f97316]" />
-        <span className="text-zinc-200">CONSUMO CALTEC</span>
+        <span className="text-zinc-300 font-medium">CONSUMO CALTEC</span>
+        <span className="font-mono font-bold text-[#fb923c]">
+          {activeData.consumoCaltec.toLocaleString("pt-BR")}
+        </span>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-full bg-[#3b82f6]" />
-        <span className="text-zinc-200">PREVISÃO RECEBIMENTO</span>
+        <span className="text-zinc-300 font-medium">PREVISÃO RECEBIMENTO</span>
+        <span className="font-mono font-bold text-[#60a5fa]">
+          {activeData.previsaoRecebimento.toLocaleString("pt-BR")}
+        </span>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-full bg-[#eab308]" />
-        <span className="text-zinc-200">ENTRADA FABRICA</span>
+        <span className="text-zinc-300 font-medium">ENTRADA FABRICA</span>
+        <span className="font-mono font-bold text-[#facc15]">
+          {activeData.entradaFabrica !== null
+            ? activeData.entradaFabrica.toLocaleString("pt-BR")
+            : "-"}
+        </span>
       </div>
     </div>
   );
@@ -144,6 +169,12 @@ export function EstoquePrevisaoView({
           <ComposedChart
             data={data}
             margin={{ top: 25, right: 15, left: -10, bottom: 5 }}
+            onMouseMove={(state) => {
+              if (state && state.activeLabel !== undefined) {
+                setHoveredSemana(Number(state.activeLabel));
+              }
+            }}
+            onMouseLeave={() => setHoveredSemana(null)}
             onClick={(state) => {
               if (state && state.activeLabel !== undefined && onSelectSemana) {
                 const clickedSemana = Number(state.activeLabel);
@@ -213,6 +244,12 @@ export function EstoquePrevisaoView({
           <LineChart
             data={data}
             margin={{ top: 25, right: 15, left: -10, bottom: 5 }}
+            onMouseMove={(state) => {
+              if (state && state.activeLabel !== undefined) {
+                setHoveredSemana(Number(state.activeLabel));
+              }
+            }}
+            onMouseLeave={() => setHoveredSemana(null)}
             onClick={(state) => {
               if (state && state.activeLabel !== undefined && onSelectSemana) {
                 const clickedSemana = Number(state.activeLabel);

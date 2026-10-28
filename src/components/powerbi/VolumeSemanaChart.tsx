@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -56,25 +56,65 @@ export function VolumeSemanaChart({
   onSelectSemana,
   className = "",
 }: VolumeSemanaChartProps) {
+  const [hoveredSemana, setHoveredSemana] = useState<number | null>(null);
+
+  const activeSemana = hoveredSemana ?? selectedSemana;
+  const activeItem = activeSemana ? data.find((d) => d.semana === activeSemana) : null;
+
+  const totalEntregue = data.reduce((acc, d) => acc + d.volumeEntregue, 0);
+  const totalPrevisto = data.reduce((acc, d) => acc + d.volumePrevisto, 0);
+  const totalPct = totalPrevisto > 0 ? Math.round((totalEntregue / totalPrevisto) * 100) : 0;
+  const avgValor = hasValorMedio
+    ? Math.round(
+        data.filter((d) => d.valorMedio).reduce((acc, d) => acc + (d.valorMedio || 0), 0) /
+          (data.filter((d) => d.valorMedio).length || 1)
+      )
+    : null;
+
+  const valEntregue = activeItem ? activeItem.volumeEntregue : totalEntregue;
+  const valPrevisto = activeItem ? activeItem.volumePrevisto : totalPrevisto;
+  const valPct = activeItem ? activeItem.percentAtendido : totalPct;
+  const valValor = activeItem
+    ? activeItem.valorMedio
+      ? Math.round(activeItem.valorMedio)
+      : null
+    : avgValor;
+
   const legend = (
-    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs">
-      <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-sm bg-[#1b91ff]" />
-        <span className="text-zinc-200">Volume entregue</span>
+        <span className="text-zinc-300 font-medium">Volume entregue:</span>
+        <span className="font-mono font-bold text-white">
+          {valEntregue.toLocaleString("pt-BR")} ton
+        </span>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-sm bg-[#102e9e]" />
-        <span className="text-zinc-200">Volume previsto</span>
+        <span className="text-zinc-300 font-medium">Volume previsto:</span>
+        <span className="font-mono font-bold text-white">
+          {valPrevisto.toLocaleString("pt-BR")} ton
+        </span>
       </div>
-      {hasValorMedio && (
-        <div className="flex items-center gap-1.5">
+      {hasValorMedio && valValor !== null && (
+        <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
           <span className="h-2.5 w-2.5 rounded-sm bg-[#94a3b8]" />
-          <span className="text-zinc-200">Valor médio produto</span>
+          <span className="text-zinc-300 font-medium">Valor médio:</span>
+          <span className="font-mono font-bold text-zinc-100">
+            R$ {valValor.toLocaleString("pt-BR")}
+          </span>
         </div>
       )}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 rounded bg-white/5 px-2 py-0.5 border border-white/10">
         <span className="h-2.5 w-2.5 rounded-full bg-[#ff7a29]" />
-        <span className="text-zinc-200">% Atendido</span>
+        <span className="text-zinc-300 font-medium">% Atendido:</span>
+        <span
+          className={`font-mono font-extrabold ${
+            valPct >= 100 ? "text-emerald-400" : "text-red-400"
+          }`}
+        >
+          {valPct}%
+        </span>
       </div>
     </div>
   );
@@ -85,6 +125,12 @@ export function VolumeSemanaChart({
         <ComposedChart
           data={data}
           margin={{ top: 36, right: 20, left: 0, bottom: 5 }}
+          onMouseMove={(state) => {
+            if (state && state.activeLabel !== undefined) {
+              setHoveredSemana(Number(state.activeLabel));
+            }
+          }}
+          onMouseLeave={() => setHoveredSemana(null)}
           onClick={(state) => {
             if (state && state.activeLabel !== undefined && onSelectSemana) {
               const clickedSemana = Number(state.activeLabel);
