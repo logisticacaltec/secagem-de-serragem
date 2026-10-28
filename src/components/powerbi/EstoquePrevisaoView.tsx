@@ -63,11 +63,24 @@ export function EstoquePrevisaoView({
 }: EstoquePrevisaoViewProps) {
   const [hoveredSemana, setHoveredSemana] = useState<number | null>(null);
 
-  const activeSemana = hoveredSemana ?? selectedSemana ?? 43;
-  const activeData =
-    data.find((s) => s.semana === activeSemana) ||
+  // Localizar a última semana atualizada com dados realizados na planilha
+  const latestUpdatedItem =
+    data
+      .slice()
+      .reverse()
+      .find(
+        (d) =>
+          d.entradaFabrica !== null &&
+          d.entradaFabrica !== undefined &&
+          d.entradaFabrica > 0
+      ) ||
     data.find((s) => s.isCurrentWeek) ||
     data[data.length - 1];
+
+  const activeData = hoveredSemana
+    ? data.find((s) => s.semana === hoveredSemana) || latestUpdatedItem
+    : (selectedSemana ? data.find((s) => s.semana === selectedSemana) : null) ||
+      latestUpdatedItem;
 
   const currentWeekData = activeData;
 
@@ -127,10 +140,10 @@ export function EstoquePrevisaoView({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* KPI highlight ribbon for Week 43 */}
+      {/* KPI highlight ribbon */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KpiCard
-          label="Estoque Atual (Semana 43)"
+          label={`Estoque (Semana ${currentWeekData.semana})`}
           value={currentWeekData.estoque}
           unit="ton"
           status="warning"
@@ -138,10 +151,20 @@ export function EstoquePrevisaoView({
         />
         <KpiCard
           label="Entrada Fábrica"
-          value={currentWeekData.entradaFabrica || 961}
+          value={currentWeekData.entradaFabrica !== null ? currentWeekData.entradaFabrica : 0}
           unit="ton"
-          status="danger"
-          subtext="Abaixo da previsão"
+          status={
+            currentWeekData.entradaFabrica &&
+            currentWeekData.entradaFabrica >= currentWeekData.previsaoRecebimento
+              ? "success"
+              : "danger"
+          }
+          subtext={
+            currentWeekData.entradaFabrica &&
+            currentWeekData.entradaFabrica >= currentWeekData.previsaoRecebimento
+              ? "Meta atingida"
+              : "Abaixo da previsão"
+          }
         />
         <KpiCard
           label="Consumo Caltec"

@@ -53,14 +53,18 @@ export function EntreguePrevistoMtdChart({
 }: EntreguePrevistoMtdChartProps) {
   const [hoveredMes, setHoveredMes] = useState<string | null>(null);
 
-  const activeItem = hoveredMes ? data.find((d) => d.mes === hoveredMes) : null;
-  const totalEntregue = data.reduce((acc, d) => acc + d.volumeEntregue, 0);
-  const totalPrevisto = data.reduce((acc, d) => acc + d.volumePrevisto, 0);
-  const totalPct = totalPrevisto > 0 ? Math.round((totalEntregue / totalPrevisto) * 100) : 0;
+  // O último mês atualizado com dados na planilha
+  const latestUpdatedItem =
+    data.slice().reverse().find((d) => d.volumeEntregue > 0) ||
+    data[data.length - 1];
 
-  const valEntregue = activeItem ? activeItem.volumeEntregue : totalEntregue;
-  const valPrevisto = activeItem ? activeItem.volumePrevisto : totalPrevisto;
-  const valPct = activeItem ? activeItem.variacaoPercent : totalPct;
+  const currentItem = hoveredMes
+    ? data.find((d) => d.mes === hoveredMes) || latestUpdatedItem
+    : latestUpdatedItem;
+
+  const valEntregue = currentItem.volumeEntregue;
+  const valPrevisto = currentItem.volumePrevisto;
+  const valPct = currentItem.variacaoPercent;
 
   const legend = (
     <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">

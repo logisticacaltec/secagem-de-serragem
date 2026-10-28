@@ -58,27 +58,20 @@ export function VolumeSemanaChart({
 }: VolumeSemanaChartProps) {
   const [hoveredSemana, setHoveredSemana] = useState<number | null>(null);
 
-  const activeSemana = hoveredSemana ?? selectedSemana;
-  const activeItem = activeSemana ? data.find((d) => d.semana === activeSemana) : null;
+  // A última semana atualizada com dados na planilha
+  const latestUpdatedItem =
+    data.slice().reverse().find((d) => d.volumeEntregue > 0) ||
+    data[data.length - 1];
 
-  const totalEntregue = data.reduce((acc, d) => acc + d.volumeEntregue, 0);
-  const totalPrevisto = data.reduce((acc, d) => acc + d.volumePrevisto, 0);
-  const totalPct = totalPrevisto > 0 ? Math.round((totalEntregue / totalPrevisto) * 100) : 0;
-  const avgValor = hasValorMedio
-    ? Math.round(
-        data.filter((d) => d.valorMedio).reduce((acc, d) => acc + (d.valorMedio || 0), 0) /
-          (data.filter((d) => d.valorMedio).length || 1)
-      )
-    : null;
+  const currentItem = hoveredSemana
+    ? data.find((d) => d.semana === hoveredSemana) || latestUpdatedItem
+    : (selectedSemana ? data.find((d) => d.semana === selectedSemana) : null) ||
+      latestUpdatedItem;
 
-  const valEntregue = activeItem ? activeItem.volumeEntregue : totalEntregue;
-  const valPrevisto = activeItem ? activeItem.volumePrevisto : totalPrevisto;
-  const valPct = activeItem ? activeItem.percentAtendido : totalPct;
-  const valValor = activeItem
-    ? activeItem.valorMedio
-      ? Math.round(activeItem.valorMedio)
-      : null
-    : avgValor;
+  const valEntregue = currentItem.volumeEntregue;
+  const valPrevisto = currentItem.volumePrevisto;
+  const valPct = currentItem.percentAtendido;
+  const valValor = currentItem.valorMedio ? Math.round(currentItem.valorMedio) : null;
 
   const legend = (
     <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">

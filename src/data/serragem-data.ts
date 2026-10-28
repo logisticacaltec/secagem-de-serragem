@@ -231,8 +231,8 @@ export const ESTOQUE_PREVISAO_SEMANAS: EstoqueSemanalData[] = [
   {
     semana: 43,
     estoque: 2744,
-    estoqueB01: 2400,
-    estoqueB02: 1300,
+    estoqueB01: 1829,
+    estoqueB02: 915,
     consumoCaltec: 1150,
     previsaoRecebimento: 1195,
     entradaFabrica: 961,
