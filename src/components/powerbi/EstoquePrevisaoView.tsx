@@ -16,6 +16,7 @@ import { KpiCard } from "./KpiCard";
 import { ESTOQUE_PREVISAO_SEMANAS, type EstoqueSemanalData } from "@/data/serragem-data";
 
 interface EstoquePrevisaoViewProps {
+  data?: EstoqueSemanalData[];
   selectedSemana?: number | null;
   onSelectSemana?: (sem: number | null) => void;
 }
@@ -26,6 +27,8 @@ interface EstoqueBarLabelProps {
   width?: number;
   value?: number | string;
   index?: number;
+  selectedSemana?: number | null;
+  data?: EstoqueSemanalData[];
 }
 
 interface FluxoDotProps {
@@ -36,6 +39,8 @@ interface FluxoDotProps {
   payload?: EstoqueSemanalData;
   color?: string;
   isBoldLabel?: boolean;
+  drawHighlightRect?: boolean;
+  selectedSemana?: number | null;
 }
 
 interface TooltipPayloadItem {
@@ -51,9 +56,15 @@ interface CustomTooltipProps {
   label?: string;
 }
 
-export function EstoquePrevisaoView({ selectedSemana, onSelectSemana }: EstoquePrevisaoViewProps) {
+export function EstoquePrevisaoView({
+  data = ESTOQUE_PREVISAO_SEMANAS,
+  selectedSemana,
+  onSelectSemana,
+}: EstoquePrevisaoViewProps) {
   const currentWeekData =
-    ESTOQUE_PREVISAO_SEMANAS.find((s) => s.isCurrentWeek) || ESTOQUE_PREVISAO_SEMANAS[9]; // week 43
+    (selectedSemana ? data.find((s) => s.semana === selectedSemana) : undefined) ||
+    data.find((s) => s.isCurrentWeek) ||
+    data[data.length - 1];
 
   const topLegend = (
     <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs">
@@ -131,7 +142,7 @@ export function EstoquePrevisaoView({ selectedSemana, onSelectSemana }: EstoqueP
       >
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
-            data={ESTOQUE_PREVISAO_SEMANAS}
+            data={data}
             margin={{ top: 25, right: 15, left: -10, bottom: 5 }}
             onClick={(state) => {
               if (state && state.activeLabel !== undefined && onSelectSemana) {
@@ -164,7 +175,7 @@ export function EstoquePrevisaoView({ selectedSemana, onSelectSemana }: EstoqueP
               fill="#102e9e"
               radius={[3, 3, 0, 0]}
               maxBarSize={44}
-              label={<CustomEstoqueBarLabel />}
+              label={<CustomEstoqueBarLabel data={data} selectedSemana={selectedSemana} />}
             />
 
             <Area
@@ -200,7 +211,7 @@ export function EstoquePrevisaoView({ selectedSemana, onSelectSemana }: EstoqueP
       >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
-            data={ESTOQUE_PREVISAO_SEMANAS}
+            data={data}
             margin={{ top: 25, right: 15, left: -10, bottom: 5 }}
             onClick={(state) => {
               if (state && state.activeLabel !== undefined && onSelectSemana) {
@@ -232,7 +243,13 @@ export function EstoquePrevisaoView({ selectedSemana, onSelectSemana }: EstoqueP
               name="CONSUMO CALTEC"
               stroke="#f97316"
               strokeWidth={2.5}
-              dot={<CustomFluxoDot color="#f97316" />}
+              dot={
+                <CustomFluxoDot
+                  color="#f97316"
+                  drawHighlightRect={true}
+                  selectedSemana={selectedSemana}
+                />
+              }
             />
 
             <Line
@@ -241,7 +258,7 @@ export function EstoquePrevisaoView({ selectedSemana, onSelectSemana }: EstoqueP
               name="PREVISÃO RECEBIMENTO"
               stroke="#3b82f6"
               strokeWidth={2.5}
-              dot={<CustomFluxoDot color="#3b82f6" />}
+              dot={<CustomFluxoDot color="#3b82f6" selectedSemana={selectedSemana} />}
             />
 
             <Line
@@ -251,7 +268,7 @@ export function EstoquePrevisaoView({ selectedSemana, onSelectSemana }: EstoqueP
               stroke="#eab308"
               strokeWidth={2.5}
               connectNulls={false}
-              dot={<CustomFluxoDot color="#eab308" isBoldLabel={true} />}
+              dot={<CustomFluxoDot color="#eab308" isBoldLabel={true} selectedSemana={selectedSemana} />}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -261,10 +278,10 @@ export function EstoquePrevisaoView({ selectedSemana, onSelectSemana }: EstoqueP
 }
 
 function CustomEstoqueBarLabel(props: EstoqueBarLabelProps) {
-  const { x = 0, y = 0, width = 0, value, index = 0 } = props;
+  const { x = 0, y = 0, width = 0, value, index = 0, selectedSemana, data = ESTOQUE_PREVISAO_SEMANAS } = props;
   if (!value) return null;
-  const item = ESTOQUE_PREVISAO_SEMANAS[index];
-  const isCurrent = item?.isCurrentWeek;
+  const item = data[index];
+  const isCurrent = selectedSemana ? item?.semana === selectedSemana : item?.isCurrentWeek;
 
   return (
     <g>
@@ -296,30 +313,59 @@ function CustomEstoqueBarLabel(props: EstoqueBarLabelProps) {
 }
 
 function CustomFluxoDot(props: FluxoDotProps) {
-  const { cx, cy, stroke, value, payload } = props;
-  if (cx === undefined || cy === undefined || value === null || value === undefined) return null;
-  const isCurrent = payload?.isCurrentWeek;
+  const {
+    cx,
+    cy,
+    stroke,
+    value,
+    payload,
+    color,
+    isBoldLabel,
+    drawHighlightRect,
+    selectedSemana,
+  } = props;
+  if (cx === undefined || cy === undefined) return null;
+  const isCurrent = selectedSemana
+    ? payload?.semana === selectedSemana
+    : payload?.isCurrentWeek;
 
   return (
     <g>
-      <circle
-        cx={cx}
-        cy={cy}
-        r={isCurrent ? 5 : 3.5}
-        fill={stroke}
-        stroke="#ffffff"
-        strokeWidth={1.5}
-      />
-      <text
-        x={cx}
-        y={cy - 9}
-        fill="#ffffff"
-        fontSize={9}
-        fontWeight={isCurrent ? 800 : 600}
-        textAnchor="middle"
-      >
-        {value}
-      </text>
+      {drawHighlightRect && isCurrent && (
+        <rect
+          x={cx - 24}
+          y={0}
+          width={48}
+          height={260}
+          fill="none"
+          stroke="#ef4444"
+          strokeWidth={2.5}
+          rx={4}
+          className="animate-pulse"
+        />
+      )}
+      {value !== null && value !== undefined && (
+        <>
+          <circle
+            cx={cx}
+            cy={cy}
+            r={isCurrent ? 5 : 3.5}
+            fill={color || stroke}
+            stroke="#ffffff"
+            strokeWidth={1.5}
+          />
+          <text
+            x={cx}
+            y={cy - 9}
+            fill="#ffffff"
+            fontSize={isBoldLabel ? 10 : 9}
+            fontWeight={isCurrent || isBoldLabel ? 800 : 600}
+            textAnchor="middle"
+          >
+            {value}
+          </text>
+        </>
+      )}
     </g>
   );
 }

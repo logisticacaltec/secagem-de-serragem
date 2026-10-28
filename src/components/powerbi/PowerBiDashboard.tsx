@@ -324,6 +324,7 @@ export function PowerBiDashboard() {
         {currentTab === "previsao" && (
           <div className="flex flex-col gap-4 animate-fadeIn">
             <EstoquePrevisaoView
+              data={dataset.estoquePrevisaoSemanas}
               selectedSemana={selectedSemana}
               onSelectSemana={setSelectedSemana}
             />
