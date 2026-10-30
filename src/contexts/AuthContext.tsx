@@ -85,6 +85,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+    // 1. Validação centralizada na Inteligência Logística
+    try {
+      const centralEndpoint =
+        typeof window !== "undefined" && window.location.hostname === "localhost"
+          ? "http://localhost:8080/api/auth/login"
+          : "https://logistics-intelligence-compass.lovable.app/api/auth/login";
+
+      const res = await fetch(centralEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, project: "serragem-seca" }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok && data?.user) {
+        const authUser: AuthUser = {
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          role: "usuario", // Perfil estritamente de visualização e filtros
+          active: data.user.status === "ativo",
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString(),
+        };
+        saveStoredSession(authUser);
+        setCurrentUser(authUser);
+        return { success: true, user: authUser };
+      } else if (data && data.ok === false && data.error) {
+        return { success: false, error: data.error };
+      }
+    } catch (e) {
+      console.warn("Central offline ou inacessível, consultando base local:", e);
+    }
+
+    // 2. Fallback de contingência local
     const result = authenticateUser(email, password);
     if (result.success && result.user) {
       setCurrentUser(result.user);

@@ -60,15 +60,8 @@ function Index() {
     return <LoginView />;
   }
 
-  // Authenticated as Admin and viewing Admin Panel
-  if (currentView === "admin" && isAdmin) {
-    return <AdminUsersView onBackToDashboard={() => setCurrentView("dashboard")} />;
-  }
-
-  // Default: Authenticated viewing Dashboard
+  // Default: Authenticated viewing Dashboard (cadastro exclusivo na Inteligência Logística)
   return (
-    <PowerBiDashboard
-      onOpenAdminView={isAdmin ? () => setCurrentView("admin") : undefined}
-    />
+    <PowerBiDashboard />
   );
 }
