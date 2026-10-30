@@ -12,7 +12,11 @@ import { parseExcelData, DEFAULT_DATASET, type DashboardDataset } from "@/lib/ex
 
 const STORAGE_KEY = "caltec_serragem_dashboard_data_v1";
 
-export function PowerBiDashboard() {
+interface PowerBiDashboardProps {
+  onOpenAdminView?: () => void;
+}
+
+export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}) {
   const [currentTab, setCurrentTab] = useState<DashboardTab>("secador");
   const [selectedSemana, setSelectedSemana] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -185,6 +189,7 @@ export function PowerBiDashboard() {
           sourceFileName={dataset.sourceFileName}
           lastUpdated={dataset.lastUpdated}
           isLoading={isLoading}
+          onOpenAdminView={onOpenAdminView}
         />
 
         {/* 1. SERRAGEM SECADOR TAB */}

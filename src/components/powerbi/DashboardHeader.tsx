@@ -9,7 +9,12 @@ import {
   FileSpreadsheet,
   Upload,
   CheckCircle2,
+  Users,
+  LogOut,
+  Shield,
+  ShieldCheck,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type DashboardTab = "secador" | "seca" | "previsao";
 
@@ -27,6 +32,7 @@ interface DashboardHeaderProps {
   sourceFileName?: string;
   lastUpdated?: string;
   isLoading?: boolean;
+  onOpenAdminView?: () => void;
 }
 
 export function DashboardHeader({
@@ -43,8 +49,10 @@ export function DashboardHeader({
   sourceFileName,
   lastUpdated,
   isLoading = false,
+  onOpenAdminView,
 }: DashboardHeaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { currentUser, isAdmin, logout } = useAuth();
 
   const titles: Record<DashboardTab, string> = {
     secador: "Serragem Secador",
@@ -182,6 +190,57 @@ export function DashboardHeader({
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
+
+          {/* Admin Screen Button (Visible if user is admin) */}
+          {isAdmin && onOpenAdminView && (
+            <button
+              onClick={onOpenAdminView}
+              title="Acessar tela de administração e pré-cadastro de usuários"
+              className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600/90 to-teal-600/90 hover:from-emerald-500 hover:to-teal-500 text-white px-2.5 py-1.5 text-xs font-bold transition shadow-lg shadow-emerald-950/30 border border-emerald-400/30 cursor-pointer"
+            >
+              <Users className="h-3.5 w-3.5 text-emerald-200" />
+              <span className="hidden sm:inline">Gerenciar Usuários</span>
+              <span className="rounded bg-emerald-400/20 px-1 py-0.2 text-[9px] text-emerald-200 uppercase font-mono">
+                Admin
+              </span>
+            </button>
+          )}
+
+          {/* User Profile Chip */}
+          {currentUser && (
+            <div className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-xs">
+              <div
+                className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold uppercase ${
+                  isAdmin
+                    ? "bg-emerald-600/30 text-emerald-300 border border-emerald-500/40"
+                    : "bg-[#1b91ff]/30 text-[#38bdf8] border border-[#1b91ff]/40"
+                }`}
+                title={currentUser.email}
+              >
+                {currentUser.name.charAt(0)}
+              </div>
+              <div className="hidden xl:flex flex-col text-left">
+                <span className="text-[11px] font-bold text-white leading-tight truncate max-w-[100px]">
+                  {currentUser.name.split(" ")[0]}
+                </span>
+                <span className="text-[9px] text-zinc-400 leading-tight">
+                  {isAdmin ? "Admin" : "Usuário"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Logout Button */}
+          {currentUser && (
+            <button
+              onClick={logout}
+              title="Sair da sessão"
+              className="flex items-center gap-1 rounded-lg bg-white/5 hover:bg-red-950/50 hover:text-red-300 text-zinc-400 border border-white/10 hover:border-red-500/30 px-2 py-1.5 text-xs transition cursor-pointer"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline text-[11px]">Sair</span>
+            </button>
+          )}
         </div>
       </div>
 
