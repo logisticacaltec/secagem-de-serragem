@@ -147,13 +147,34 @@ export function authenticateUser(email: string, password: string): AuthResult {
   }
 
   const users = getStoredUsers();
-  const found = users.find((u) => u.email.trim().toLowerCase() === cleanEmail);
+  let found = users.find((u) => u.email.trim().toLowerCase() === cleanEmail);
 
   if (!found) {
-    return {
-      success: false,
-      error: "E-mail não encontrado. O acesso precisa ser pré-cadastrado pelo administrador.",
-    };
+    if (cleanEmail.endsWith("@caltec.com.br") || cleanEmail.includes("@caltec")) {
+      const namePart = cleanEmail.split("@")[0].replace(/[._-]/g, " ");
+      const formattedName = namePart
+        .split(" ")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+
+      const autoUser: StoredUser = {
+        id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: formattedName || "Colaborador Caltec",
+        email: cleanEmail,
+        password: cleanPassword,
+        role: "usuario",
+        active: true,
+        createdAt: new Date().toISOString(),
+      };
+      users.push(autoUser);
+      saveStoredUsers(users);
+      found = autoUser;
+    } else {
+      return {
+        success: false,
+        error: "E-mail não encontrado. O acesso precisa ser pré-cadastrado pelo administrador com e-mail corporativo Caltec.",
+      };
+    }
   }
 
   if (!found.active) {
