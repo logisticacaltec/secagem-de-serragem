@@ -8,15 +8,15 @@ import { useAuth } from "@/contexts/AuthContext";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard Serragem 2026 | Logística Caltec" },
+      { title: "Dashboard Serragem 2026" },
       {
         name: "description",
         content:
-          "Dashboard gerencial semanal de acompanhamento de Serragem Secador, Serragem Seca e Estoque & Previsão da Logística Caltec.",
+          "Dashboard gerencial semanal de acompanhamento de Serragem Secador, Serragem Seca e Estoque & Previsão.",
       },
       {
         property: "og:title",
-        content: "Dashboard Serragem 2026 | Logística Caltec",
+        content: "Dashboard Serragem 2026",
       },
       {
         property: "og:description",
@@ -38,12 +38,12 @@ function Index() {
       <div className="flex min-h-screen w-full items-center justify-center bg-[#030712] text-white">
         <div className="flex flex-col items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-serif text-3xl font-extrabold tracking-wider text-white">
-              CALTEC
+            <span className="font-serif text-2xl font-extrabold tracking-wider text-white">
+              Serragem Seca & Secador
             </span>
             <div className="h-6 w-[1.5px] bg-white/20" />
             <span className="text-xs uppercase font-bold tracking-widest text-[#38bdf8]">
-              Logística 2026
+              Controle Operacional
             </span>
           </div>
           <div className="flex items-center gap-2 text-xs text-zinc-400">

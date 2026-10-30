@@ -80,10 +80,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Logística Caltec" },
+      { title: "Dashboard Serragem 2026" },
       { name: "description", content: "Serragem seca e secadores industriais" },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Logística Caltec" },
+      { property: "og:title", content: "Dashboard Serragem 2026" },
       { property: "og:description", content: "Serragem seca e secadores industriais" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
