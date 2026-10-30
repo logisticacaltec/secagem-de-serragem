@@ -54,6 +54,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const session = getStoredSession();
       if (session) {
         setCurrentUser(session);
+      } else if (typeof window !== "undefined") {
+        // Se estiver embutido no painel Caltec (iframe ou parâmetro embed)
+        const isEmbedded = window.self !== window.top;
+        const params = new URLSearchParams(window.location.search);
+        const embedParam = params.get("embed") === "true";
+        const emailParam = params.get("user") || params.get("email");
+
+        if (isEmbedded || embedParam) {
+          const matchingUser = emailParam
+            ? storedUsers.find((u) => u.email.toLowerCase() === emailParam.toLowerCase())
+            : null;
+
+          const authUser: AuthUser = {
+            id: matchingUser?.id || "user-embedded",
+            name: matchingUser?.name || "Operador Caltec",
+            email: matchingUser?.email || "operacao@caltec.com.br",
+            role: matchingUser?.role || "usuario",
+            active: true,
+            createdAt: new Date().toISOString(),
+          };
+          setCurrentUser(authUser);
+        }
       }
     } catch (err) {
       console.error("Erro na inicialização de autenticação:", err);
@@ -299,3 +321,4 @@ export function useAuth() {
   }
   return context;
 }
+

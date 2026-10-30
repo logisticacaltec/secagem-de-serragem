@@ -61,3 +61,4 @@ describe("Authentication & User Management", () => {
     expect(res.error).toContain("desativado");
   });
 });
+
