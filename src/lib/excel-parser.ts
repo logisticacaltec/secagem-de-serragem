@@ -29,6 +29,7 @@ export interface DashboardDataset {
 
   estoquePrevisaoSemanas: EstoqueSemanalData[];
   availableSemanas: number[];
+  currentSemana?: number;
   lastUpdated: string;
   sourceFileName: string;
 }
@@ -46,7 +47,8 @@ export const DEFAULT_DATASET: DashboardDataset = {
 
   estoquePrevisaoSemanas: ESTOQUE_PREVISAO_SEMANAS,
   availableSemanas: [34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
-  lastUpdated: "2026-10-28T14:30:00",
+  currentSemana: 44,
+  lastUpdated: "2026-11-03T14:30:00",
   sourceFileName: "SERRAGEM 2026.pbix (Consolidado)",
 };
 
@@ -96,12 +98,29 @@ export function parseExcelData(
   const estoquePrevisaoSemanas: EstoqueSemanalData[] = [];
   const availableSemanasSet = new Set<number>();
 
-  let maxSemanaComEntrada = 43;
-
+  // 1. Identificar semanas disponíveis e a última semana com movimentação realizada
+  let maxSemanaComDados = 44; // Pelo menos semana 44
   for (const r of pRows) {
     const sem = Number(r.SEMANA);
     if (!sem || isNaN(sem)) continue;
     availableSemanasSet.add(sem);
+
+    const secRec = Number(r["RECEBIMENTO S. SECADOR"]) || 0;
+    const secaRec = Number(r["RECEBIMENTO S. SECA"]) || 0;
+    const entFab =
+      r["ENTRADA FABRICA"] !== undefined && r["ENTRADA FABRICA"] !== ""
+        ? Number(r["ENTRADA FABRICA"])
+        : null;
+
+    if (secRec > 0 || secaRec > 0 || (entFab !== null && entFab > 0)) {
+      maxSemanaComDados = Math.max(maxSemanaComDados, sem);
+    }
+  }
+
+  // 2. Processar séries semanais até a semana atual com dados
+  for (const r of pRows) {
+    const sem = Number(r.SEMANA);
+    if (!sem || isNaN(sem)) continue;
 
     const secProj = Number(r["PROJEÇÃO SERRAGEM SECADOR"]) || 0;
     const secRec = Number(r["RECEBIMENTO S. SECADOR"]) || 0;
@@ -112,7 +131,8 @@ export function parseExcelData(
     const secaPct = secaProj > 0 ? Math.round((secaRec / secaProj) * 100) : 0;
     const valMedio = Number(r["Valor Média Produto"]) || undefined;
 
-    if (sem >= 34 && sem <= 43) {
+    // Serragem Secador: semanas de 34 em diante até a semana atual
+    if (sem >= 34 && (sem <= maxSemanaComDados || secRec > 0)) {
       secadorSemanas.push({
         semana: sem,
         volumeEntregue: Math.round(secRec),
@@ -121,7 +141,8 @@ export function parseExcelData(
       });
     }
 
-    if (sem >= 36 && sem <= 43) {
+    // Serragem Seca: semanas de 36 em diante até a semana atual
+    if (sem >= 36 && (sem <= maxSemanaComDados || secaRec > 0)) {
       secaSemanas.push({
         semana: sem,
         volumeEntregue: Math.round(secaRec),
@@ -141,11 +162,7 @@ export function parseExcelData(
         ? Number(r["ENTRADA FABRICA"])
         : null;
 
-    if (entFab !== null && entFab > 0) {
-      maxSemanaComEntrada = Math.max(maxSemanaComEntrada, sem);
-    }
-
-    if (sem >= 34 && sem <= 50) {
+    if (sem >= 34 && sem <= 52) {
       estoquePrevisaoSemanas.push({
         semana: sem,
         estoque: Math.round(estoqueVal),
@@ -154,15 +171,14 @@ export function parseExcelData(
         consumoCaltec: Math.round(consCaltec),
         previsaoRecebimento: Math.round(prevRec),
         entradaFabrica: entFab !== null ? Math.round(entFab) : null,
-        isCurrentWeek: sem === 43,
+        isCurrentWeek: sem === maxSemanaComDados,
       });
     }
   }
 
-  // Ensure current week is marked accurately
-  for (const item of estoquePrevisaoSemanas) {
-    item.isCurrentWeek = item.semana === maxSemanaComEntrada;
-  }
+  secadorSemanas.sort((a, b) => a.semana - b.semana);
+  secaSemanas.sort((a, b) => a.semana - b.semana);
+  estoquePrevisaoSemanas.sort((a, b) => a.semana - b.semana);
 
   // 2. Process "Mensal por fornecedor"
   const mSheet = wb.Sheets["Mensal por fornecedor"];
@@ -300,6 +316,7 @@ export function parseExcelData(
       estoquePrevisaoSemanas.length > 0 ? estoquePrevisaoSemanas : ESTOQUE_PREVISAO_SEMANAS,
     availableSemanas:
       availableSemanas.length > 0 ? availableSemanas : DEFAULT_DATASET.availableSemanas,
+    currentSemana: maxSemanaComDados,
     lastUpdated: new Date().toISOString(),
     sourceFileName: fileName,
   };

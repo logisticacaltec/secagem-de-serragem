@@ -56,4 +56,54 @@ describe("Excel Parser", () => {
     expect(sem43?.estoque).toBe(2744);
     expect(sem43?.entradaFabrica).toBe(961);
   });
+
+  it("correctly includes week 44 in weekly series and estoque", () => {
+    const wb = XLSX.utils.book_new();
+
+    const pData = [
+      {
+        SEMANA: 44,
+        "PROJEÇÃO SERRAGEM SECADOR": 350,
+        "RECEBIMENTO S. SECADOR": 245,
+        "PROJEÇÃO SERRAGEM SECA": 745,
+        "RECEBIMENTO S. SECA": 569,
+        "Valor Média Produto": 638,
+        "CONSUMO BARRACAO 2": 2789,
+        "ESTOQUE B 01": 2450,
+        "ESTOQUE B 02": 1350,
+        "CONSUMO CALTEC seerragem": 1150,
+        "PREVISÃO RECEBIMENTO": 1150,
+        "ENTRADA FABRICA": 814,
+      },
+    ];
+    const pWs = XLSX.utils.json_to_sheet(pData);
+    XLSX.utils.book_append_sheet(wb, pWs, "Previsão Semanal - Geral");
+
+    const rData = [
+      {
+        FORNECEDOR: "FOX ARTEFATO",
+        "VOLUME ENTREGUE ": 500,
+        PRODUTO: "SERRAGEM SECA",
+      },
+    ];
+    const rWs = XLSX.utils.json_to_sheet(rData);
+    XLSX.utils.book_append_sheet(wb, rWs, "Resumo por fornecedor");
+
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    const result = parseExcelData(buf, "semana44.xlsx");
+
+    const seca44 = result.secaSemanas.find((s) => s.semana === 44);
+    expect(seca44).toBeDefined();
+    expect(seca44?.volumeEntregue).toBe(569);
+    expect(seca44?.volumePrevisto).toBe(745);
+
+    const secador44 = result.secadorSemanas.find((s) => s.semana === 44);
+    expect(secador44).toBeDefined();
+    expect(secador44?.volumeEntregue).toBe(245);
+
+    const estoque44 = result.estoquePrevisaoSemanas.find((s) => s.semana === 44);
+    expect(estoque44).toBeDefined();
+    expect(estoque44?.estoque).toBe(2789);
+    expect(estoque44?.isCurrentWeek).toBe(true);
+  });
 });

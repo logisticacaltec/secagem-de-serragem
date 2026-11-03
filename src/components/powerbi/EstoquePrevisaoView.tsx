@@ -432,7 +432,7 @@ function CustomFluxoDot(props: FluxoDotProps) {
 
 function CustomEstoqueTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload || !payload.length) return null;
-  const isCurrent = Number(label) === 43;
+  const isCurrent = Boolean(payload[0]?.payload?.isCurrentWeek);
   return (
     <div className="rounded-lg border border-white/20 bg-[#070d18]/95 p-3 text-xs shadow-2xl backdrop-blur-md">
       <div className="mb-1.5 flex items-center justify-between border-b border-white/10 pb-1 font-bold text-white uppercase tracking-wider">
@@ -460,7 +460,7 @@ function CustomEstoqueTooltip({ active, payload, label }: CustomTooltipProps) {
 
 function CustomFluxoTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload || !payload.length) return null;
-  const isCurrent = Number(label) === 43;
+  const isCurrent = Boolean(payload[0]?.payload?.isCurrentWeek);
   return (
     <div className="rounded-lg border border-white/20 bg-[#070d18]/95 p-3 text-xs shadow-2xl backdrop-blur-md">
       <div className="mb-1.5 flex items-center justify-between border-b border-white/10 pb-1 font-bold text-white uppercase tracking-wider">

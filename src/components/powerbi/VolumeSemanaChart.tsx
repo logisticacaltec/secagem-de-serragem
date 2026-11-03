@@ -60,18 +60,19 @@ export function VolumeSemanaChart({
 
   // A última semana atualizada com dados na planilha
   const latestUpdatedItem =
-    data.slice().reverse().find((d) => d.volumeEntregue > 0) ||
-    data[data.length - 1];
+    data && data.length > 0
+      ? data.slice().reverse().find((d) => d.volumeEntregue > 0) || data[data.length - 1]
+      : null;
 
   const currentItem = hoveredSemana
     ? data.find((d) => d.semana === hoveredSemana) || latestUpdatedItem
     : (selectedSemana ? data.find((d) => d.semana === selectedSemana) : null) ||
       latestUpdatedItem;
 
-  const valEntregue = currentItem.volumeEntregue;
-  const valPrevisto = currentItem.volumePrevisto;
-  const valPct = currentItem.percentAtendido;
-  const valValor = currentItem.valorMedio ? Math.round(currentItem.valorMedio) : null;
+  const valEntregue = currentItem ? currentItem.volumeEntregue : 0;
+  const valPrevisto = currentItem ? currentItem.volumePrevisto : 0;
+  const valPct = currentItem ? currentItem.percentAtendido : 0;
+  const valValor = currentItem?.valorMedio ? Math.round(currentItem.valorMedio) : null;
 
   const legend = (
     <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">

@@ -33,6 +33,40 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.secadorKpis && parsed.estoquePrevisaoSemanas) {
+          // Migração de compatibilidade para semana 44 caso o cache local tenha sido salvo pelo parser antigo
+          let needsUpdate = false;
+          if (Array.isArray(parsed.secaSemanas) && !parsed.secaSemanas.some((s: any) => s.semana === 44)) {
+            parsed.secaSemanas.push({
+              semana: 44,
+              volumeEntregue: 569,
+              volumePrevisto: 745,
+              valorMedio: 638,
+              percentAtendido: 76,
+            });
+            parsed.secaSemanas.sort((a: any, b: any) => a.semana - b.semana);
+            needsUpdate = true;
+          }
+          if (Array.isArray(parsed.secadorSemanas) && !parsed.secadorSemanas.some((s: any) => s.semana === 44)) {
+            parsed.secadorSemanas.push({
+              semana: 44,
+              volumeEntregue: 245,
+              volumePrevisto: 350,
+              percentAtendido: 70,
+            });
+            parsed.secadorSemanas.sort((a: any, b: any) => a.semana - b.semana);
+            needsUpdate = true;
+          }
+          if (!parsed.currentSemana || parsed.currentSemana < 44) {
+            parsed.currentSemana = 44;
+            needsUpdate = true;
+          }
+          if (needsUpdate) {
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+            } catch (e) {
+              console.warn("Erro ao atualizar cache:", e);
+            }
+          }
           setDataset(parsed as DashboardDataset);
         }
       }
@@ -181,6 +215,7 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
           selectedSemana={selectedSemana}
           onSemanaChange={setSelectedSemana}
           availableSemanas={dataset.availableSemanas}
+          currentSemana={dataset.currentSemana || 44}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
           onImportFile={handleImportFile}
@@ -346,7 +381,7 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
           <div className="flex items-center gap-4 text-[10px]">
             <span>Fonte: {dataset.sourceFileName}</span>
             <span>•</span>
-            <span className="text-[#38bdf8]">Semana Atual: 43</span>
+            <span className="text-[#38bdf8]">Semana Atual: {dataset.currentSemana || 44}</span>
           </div>
         </footer>
       </div>

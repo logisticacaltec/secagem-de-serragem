@@ -24,6 +24,7 @@ interface DashboardHeaderProps {
   selectedSemana: number | null;
   onSemanaChange: (semana: number | null) => void;
   availableSemanas: number[];
+  currentSemana?: number;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   onImportFile: (file: File) => void;
@@ -41,6 +42,7 @@ export function DashboardHeader({
   selectedSemana,
   onSemanaChange,
   availableSemanas,
+  currentSemana = 44,
   isFullscreen,
   onToggleFullscreen,
   onImportFile,
@@ -166,7 +168,7 @@ export function DashboardHeader({
               </option>
               {availableSemanas.map((sem) => (
                 <option key={sem} value={sem} className="bg-[#0b1320] text-white">
-                  Semana {sem} {sem === 43 ? "(Atual)" : ""}
+                  Semana {sem} {sem === currentSemana ? "(Atual)" : ""}
                 </option>
               ))}
             </select>

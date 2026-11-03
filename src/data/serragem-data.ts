@@ -38,9 +38,9 @@ export interface KpiSummary {
 
 // 1. SERRAGEM SECADOR
 export const SERRAGEM_SECADOR_KPIS: KpiSummary = {
-  volumeEntregueYTD: 14187,
+  volumeEntregueYTD: 14432,
   volumePrevistoYTD: 16145,
-  percentAtendido: 88,
+  percentAtendido: 89,
 };
 
 export const SERRAGEM_SECADOR_MTD: MesData[] = [
@@ -68,13 +68,14 @@ export const SERRAGEM_SECADOR_SEMANAS: SemanaData[] = [
   { semana: 41, volumeEntregue: 276, volumePrevisto: 350, percentAtendido: 79 },
   { semana: 42, volumeEntregue: 220, volumePrevisto: 400, percentAtendido: 55 },
   { semana: 43, volumeEntregue: 264, volumePrevisto: 400, percentAtendido: 66 },
+  { semana: 44, volumeEntregue: 245, volumePrevisto: 350, percentAtendido: 70 },
 ];
 
 // 2. SERRAGEM SECA
 export const SERRAGEM_SECA_KPIS: KpiSummary = {
-  volumeEntregueYTD: 41158,
+  volumeEntregueYTD: 41727,
   volumePrevistoYTD: 39675,
-  percentAtendido: 104,
+  percentAtendido: 105,
 };
 
 export const SERRAGEM_SECA_MTD: MesData[] = [
@@ -82,7 +83,7 @@ export const SERRAGEM_SECA_MTD: MesData[] = [
   { mes: "Julho", volumeEntregue: 1733, volumePrevisto: 2700, variacaoPercent: 64 },
   { mes: "Agosto", volumeEntregue: 2059, volumePrevisto: 3600, variacaoPercent: 57 },
   { mes: "Setembro", volumeEntregue: 2233, volumePrevisto: 2900, variacaoPercent: 77 },
-  { mes: "Outubro", volumeEntregue: 1968, volumePrevisto: 2900, variacaoPercent: 68 },
+  { mes: "Outubro", volumeEntregue: 2334, volumePrevisto: 2900, variacaoPercent: 80 },
 ];
 
 export const SERRAGEM_SECA_FORNECEDORES: FornecedorData[] = [
@@ -142,7 +143,8 @@ export const SERRAGEM_SECA_SEMANAS: SemanaData[] = [
     percentAtendido: 110,
   },
   { semana: 42, volumeEntregue: 558, volumePrevisto: 795, valorMedio: 624.62, percentAtendido: 70 },
-  { semana: 43, volumeEntregue: 697, volumePrevisto: 795, valorMedio: 592.21, percentAtendido: 88 },
+  { semana: 43, volumeEntregue: 697, volumePrevisto: 745, valorMedio: 638.0, percentAtendido: 94 },
+  { semana: 44, volumeEntregue: 569, volumePrevisto: 745, valorMedio: 638.0, percentAtendido: 76 },
 ];
 
 // 3. ESTOQUE E PREVISÃO
@@ -236,7 +238,6 @@ export const ESTOQUE_PREVISAO_SEMANAS: EstoqueSemanalData[] = [
     consumoCaltec: 1150,
     previsaoRecebimento: 1195,
     entradaFabrica: 961,
-    isCurrentWeek: true,
   },
   {
     semana: 44,
@@ -245,7 +246,8 @@ export const ESTOQUE_PREVISAO_SEMANAS: EstoqueSemanalData[] = [
     estoqueB02: 1350,
     consumoCaltec: 1150,
     previsaoRecebimento: 1150,
-    entradaFabrica: null,
+    entradaFabrica: 814,
+    isCurrentWeek: true,
   },
   {
     semana: 45,

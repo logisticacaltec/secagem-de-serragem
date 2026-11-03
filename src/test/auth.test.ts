@@ -18,7 +18,7 @@ describe("Authentication & User Management", () => {
   it("loads default users when localStorage is empty", () => {
     localStorage.clear();
     const users = getStoredUsers();
-    expect(users.length).toBe(2);
+    expect(users.length).toBe(INITIAL_USERS.length);
     expect(users[0].email).toBe("admin@caltec.com.br");
     expect(users[0].role).toBe("admin");
     expect(users[1].email).toBe("operacao@caltec.com.br");
