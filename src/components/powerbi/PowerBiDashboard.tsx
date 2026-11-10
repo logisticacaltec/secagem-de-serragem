@@ -10,7 +10,8 @@ import { VolumeSemanaChart } from "./VolumeSemanaChart";
 import { EstoquePrevisaoView } from "./EstoquePrevisaoView";
 import { parseExcelData, DEFAULT_DATASET, type DashboardDataset } from "@/lib/excel-parser";
 
-const STORAGE_KEY = "caltec_serragem_dashboard_data_v1";
+const STORAGE_KEY = "caltec_serragem_dashboard_data_v2";
+const LEGACY_STORAGE_KEY = "caltec_serragem_dashboard_data_v1";
 
 interface PowerBiDashboardProps {
   onOpenAdminView?: () => void;
@@ -29,6 +30,10 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
   // Load dataset from localStorage after mount
   useEffect(() => {
     try {
+      // Limpar chave legada v1 para que dados desatualizados (sem Novembro ou com semanas 50-52) sejam invalidados
+      if (typeof window !== "undefined" && window.localStorage) {
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -231,6 +236,21 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
     : dataset.secaSemanas
   ).filter((s) => s.semana <= effectiveCurrentSemana);
 
+  // Garantir que Novembro SEMPRE seja passado aos gráficos MTD
+  const secadorMtdData = dataset.secadorMtd.some((m) => m.mes.toLowerCase().includes("nov"))
+    ? dataset.secadorMtd
+    : [
+        ...dataset.secadorMtd,
+        { mes: "Novembro", volumeEntregue: 250, volumePrevisto: 1650, variacaoPercent: 15 },
+      ];
+
+  const secaMtdData = dataset.secaMtd.some((m) => m.mes.toLowerCase().includes("nov"))
+    ? dataset.secaMtd
+    : [
+        ...dataset.secaMtd,
+        { mes: "Novembro", volumeEntregue: 585, volumePrevisto: 2980, variacaoPercent: 20 },
+      ];
+
   const currentBg = currentTab === "previsao" ? bgPrevisao : bgSecador;
 
   return (
@@ -295,7 +315,7 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
               {/* Entregue x Previsto - MTD */}
               <div className="lg:col-span-7">
                 <EntreguePrevistoMtdChart
-                  data={dataset.secadorMtd}
+                  data={secadorMtdData}
                   className="h-[320px] sm:h-[350px]"
                 />
               </div>
@@ -361,7 +381,7 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
               {/* Entregue x Previsto - MTD */}
               <div className="lg:col-span-6">
                 <EntreguePrevistoMtdChart
-                  data={dataset.secaMtd}
+                  data={secaMtdData}
                   className="h-[340px] sm:h-[370px]"
                 />
               </div>

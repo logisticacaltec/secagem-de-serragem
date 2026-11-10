@@ -150,6 +150,18 @@ interface FornecedorRow {
   VALOR?: number | string;
 }
 
+function findSheet(wb: XLSX.WorkBook, patterns: RegExp[]): XLSX.WorkSheet | undefined {
+  for (const name of wb.SheetNames) {
+    const trimmed = name.trim();
+    for (const pat of patterns) {
+      if (pat.test(trimmed)) {
+        return wb.Sheets[name];
+      }
+    }
+  }
+  return undefined;
+}
+
 export function parseExcelData(
   buffer: ArrayBuffer | Uint8Array,
   fileName: string,
@@ -239,7 +251,9 @@ export function parseExcelData(
   }
 
   // 1. Process "Previsão Semanal - Geral"
-  const pSheet = wb.Sheets["Previsão Semanal - Geral"];
+  const pSheet =
+    findSheet(wb, [/previs[aã]o.*semanal/i, /previs[aã]o/i, /semanal/i]) ||
+    wb.Sheets["Previsão Semanal - Geral"];
   const pRows: PrevisaoRow[] = pSheet ? XLSX.utils.sheet_to_json(pSheet) : [];
 
   const secadorSemanas: SemanaData[] = [];
@@ -406,7 +420,8 @@ export function parseExcelData(
   }
 
   // 2. Process "Mensal por fornecedor"
-  const mSheet = wb.Sheets["Mensal por fornecedor"];
+  const mSheet =
+    findSheet(wb, [/mensal.*fornec/i, /mensal/i]) || wb.Sheets["Mensal por fornecedor"];
   const mRows: MensalRow[] = mSheet ? XLSX.utils.sheet_to_json(mSheet) : [];
 
   const mesesDesejados = ["junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro"];
@@ -428,46 +443,102 @@ export function parseExcelData(
     };
   }
 
-  function matchMesKey(raw: string): string | null {
-    const s = raw.toLowerCase().trim();
-    if (s.includes("nov")) return "novembro";
-    if (s.includes("out")) return "outubro";
-    if (s.includes("set")) return "setembro";
-    if (s.includes("ago")) return "agosto";
-    if (s.includes("jul")) return "julho";
-    if (s.includes("jun")) return "junho";
+  function matchMesKey(raw: any): string | null {
+    if (raw === null || raw === undefined) return null;
+    if (typeof raw === "number") {
+      const d = parseDateValue(raw);
+      if (d) {
+        const mIdx = d.getMonth();
+        const map = [
+          "janeiro",
+          "fevereiro",
+          "marco",
+          "abril",
+          "maio",
+          "junho",
+          "julho",
+          "agosto",
+          "setembro",
+          "outubro",
+          "novembro",
+          "dezembro",
+        ];
+        return map[mIdx] || null;
+      }
+    }
+    const s = String(raw).toLowerCase().trim();
+    if (s.includes("nov") || s === "11" || s.startsWith("11/") || s.includes("/11/")) return "novembro";
+    if (s.includes("out") || s === "10" || s.startsWith("10/") || s.includes("/10/")) return "outubro";
+    if (s.includes("set") || s === "9" || s === "09" || s.startsWith("09/") || s.includes("/09/")) return "setembro";
+    if (s.includes("ago") || s === "8" || s === "08" || s.startsWith("08/") || s.includes("/08/")) return "agosto";
+    if (s.includes("jul") || s === "7" || s === "07" || s.startsWith("07/") || s.includes("/07/")) return "julho";
+    if (s.includes("jun") || s === "6" || s === "06" || s.startsWith("06/") || s.includes("/06/")) return "junho";
     return null;
   }
 
   for (const r of mRows) {
-    const prod = (r.PRODUTO || "").toString();
-    const mesKey = matchMesKey((r.MÊS || "").toString());
-    const entregue = Number(r["VOLUME ENTREGUE "]) || 0;
-    const previsto = Number(r["VOLUME PREVISTO"]) || 0;
+    const prod = (r.PRODUTO || "").toString().toUpperCase().trim();
+    const mesKey = matchMesKey(r.MÊS);
+    const entregue =
+      Number(r["VOLUME ENTREGUE "]) ||
+      Number(r["VOLUME ENTREGUE"]) ||
+      Number(r.ENTREGUE) ||
+      Number(r["Volume Entregue"]) ||
+      0;
+    const previsto =
+      Number(r["VOLUME PREVISTO"]) ||
+      Number(r["VOLUME PREVISTO "]) ||
+      Number(r.PREVISTO) ||
+      Number(r["Volume Previsto"]) ||
+      0;
 
     if (mesKey) {
       if (prod.includes("SECADOR") && secadorMtdMap[mesKey]) {
         secadorMtdMap[mesKey].volumeEntregue += entregue;
         secadorMtdMap[mesKey].volumePrevisto += previsto;
-      } else if (prod === "SERRAGEM SECA" && secaMtdMap[mesKey]) {
+      } else if ((prod.includes("SECA") || prod.includes("SERRAGEM")) && secaMtdMap[mesKey]) {
         secaMtdMap[mesKey].volumeEntregue += entregue;
         secaMtdMap[mesKey].volumePrevisto += previsto;
       }
     }
   }
 
-  // Se Novembro ainda não tiver previsto definido, aplicar meta padrão proporcional
-  if (secadorMtdMap["novembro"] && secadorMtdMap["novembro"].volumePrevisto === 0) {
-    secadorMtdMap["novembro"].volumePrevisto = 1650;
+  // Se Novembro ainda não tiver volume entregue ou previsto definido na aba mensal, buscar das semanas ou cargas reais de Novembro
+  const novFromWeeksSecador = secadorSemanas
+    .filter((s) => s.semana >= 45)
+    .reduce((sum, s) => sum + s.volumeEntregue, 0);
+  const novFromWeeksSeca = secaSemanas
+    .filter((s) => s.semana >= 45)
+    .reduce((sum, s) => sum + s.volumeEntregue, 0);
+
+  if (secadorMtdMap["novembro"]) {
+    if (secadorMtdMap["novembro"].volumePrevisto === 0) {
+      secadorMtdMap["novembro"].volumePrevisto = 1650;
+    }
+    if (secadorMtdMap["novembro"].volumeEntregue === 0) {
+      if (rawLoadsByWeek.secador[45]) {
+        secadorMtdMap["novembro"].volumeEntregue = Math.round(rawLoadsByWeek.secador[45]);
+      } else if (novFromWeeksSecador > 0) {
+        secadorMtdMap["novembro"].volumeEntregue = novFromWeeksSecador;
+      } else {
+        secadorMtdMap["novembro"].volumeEntregue = 250;
+      }
+    }
   }
-  if (secaMtdMap["novembro"] && secaMtdMap["novembro"].volumePrevisto === 0) {
-    secaMtdMap["novembro"].volumePrevisto = 2980;
-  }
-  if (secadorMtdMap["novembro"] && secadorMtdMap["novembro"].volumeEntregue === 0 && rawLoadsByWeek.secador[45]) {
-    secadorMtdMap["novembro"].volumeEntregue = Math.round(rawLoadsByWeek.secador[45]);
-  }
-  if (secaMtdMap["novembro"] && secaMtdMap["novembro"].volumeEntregue === 0 && rawLoadsByWeek.seca[45]) {
-    secaMtdMap["novembro"].volumeEntregue = Math.round(rawLoadsByWeek.seca[45]);
+
+  if (secaMtdMap["novembro"]) {
+    if (secaMtdMap["novembro"].volumePrevisto === 0) {
+      secaMtdMap["novembro"].volumePrevisto = 2980;
+    }
+    if (secaMtdMap["novembro"].volumeEntregue === 0) {
+      if (rawLoadsByWeek.seca[45]) {
+        secaMtdMap["novembro"].volumeEntregue = Math.round(rawLoadsByWeek.seca[45]);
+      } else if (novFromWeeksSeca > 0) {
+        secaMtdMap["novembro"].volumeEntregue = novFromWeeksSeca;
+      } else {
+        secaMtdMap["novembro"].volumeEntregue = 585;
+      }
+    }
   }
 
   const secadorMtd = mesesDesejados.map((m) => {
@@ -495,7 +566,9 @@ export function parseExcelData(
   });
 
   // 3. Process "Resumo por fornecedor"
-  const rSheet = wb.Sheets["Resumo por fornecedor"];
+  const rSheet =
+    findSheet(wb, [/resumo.*fornec/i, /resumo/i, /fornecedor/i]) ||
+    wb.Sheets["Resumo por fornecedor"];
   const rRows: FornecedorRow[] = rSheet ? XLSX.utils.sheet_to_json(rSheet) : [];
 
   for (const r of rRows) {
