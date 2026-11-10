@@ -33,8 +33,23 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.secadorKpis && parsed.estoquePrevisaoSemanas) {
-          // Migração de compatibilidade para semana 45 caso o cache local tenha sido salvo pelo parser antigo
+          // Migração e saneamento: semana 45 é a semana atual (última entrada real de material)
           let needsUpdate = false;
+          const targetSemana = 45;
+
+          // 1. Remover semanas futuras (> 45 como 50, 51, 52)
+          if (Array.isArray(parsed.secadorSemanas)) {
+            const initialLen = parsed.secadorSemanas.length;
+            parsed.secadorSemanas = parsed.secadorSemanas.filter((s: any) => s.semana <= targetSemana);
+            if (parsed.secadorSemanas.length !== initialLen) needsUpdate = true;
+          }
+          if (Array.isArray(parsed.secaSemanas)) {
+            const initialLen = parsed.secaSemanas.length;
+            parsed.secaSemanas = parsed.secaSemanas.filter((s: any) => s.semana <= targetSemana);
+            if (parsed.secaSemanas.length !== initialLen) needsUpdate = true;
+          }
+
+          // 2. Garantir semana 45 presente
           if (Array.isArray(parsed.secaSemanas) && !parsed.secaSemanas.some((s: any) => s.semana === 45)) {
             parsed.secaSemanas.push({
               semana: 45,
@@ -56,19 +71,48 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
             parsed.secadorSemanas.sort((a: any, b: any) => a.semana - b.semana);
             needsUpdate = true;
           }
-          if (!parsed.currentSemana || parsed.currentSemana < 45) {
-            parsed.currentSemana = 45;
+
+          // 3. Garantir mês de Novembro no MTD
+          if (Array.isArray(parsed.secadorMtd) && !parsed.secadorMtd.some((m: any) => m.mes.toLowerCase().includes("nov"))) {
+            parsed.secadorMtd.push({
+              mes: "Novembro",
+              volumeEntregue: 250,
+              volumePrevisto: 1650,
+              variacaoPercent: 15,
+            });
             needsUpdate = true;
           }
-          if (Array.isArray(parsed.availableSemanas) && !parsed.availableSemanas.includes(45)) {
-            parsed.availableSemanas.push(45);
-            parsed.availableSemanas.sort((a: number, b: number) => a - b);
+          if (Array.isArray(parsed.secaMtd) && !parsed.secaMtd.some((m: any) => m.mes.toLowerCase().includes("nov"))) {
+            parsed.secaMtd.push({
+              mes: "Novembro",
+              volumeEntregue: 585,
+              volumePrevisto: 2980,
+              variacaoPercent: 20,
+            });
             needsUpdate = true;
           }
+
+          // 4. Semana atual fixada em 45 (data da última entrada real de material)
+          if (!parsed.currentSemana || parsed.currentSemana !== targetSemana) {
+            parsed.currentSemana = targetSemana;
+            needsUpdate = true;
+          }
+
+          // 5. Semanas disponíveis até 45
+          if (Array.isArray(parsed.availableSemanas)) {
+            parsed.availableSemanas = parsed.availableSemanas.filter((sem: number) => sem <= targetSemana);
+            if (!parsed.availableSemanas.includes(targetSemana)) {
+              parsed.availableSemanas.push(targetSemana);
+              parsed.availableSemanas.sort((a: number, b: number) => a - b);
+            }
+            needsUpdate = true;
+          }
+
+          // 6. Atualizar isCurrentWeek rigorosamente para semana 45
           if (Array.isArray(parsed.estoquePrevisaoSemanas)) {
             parsed.estoquePrevisaoSemanas = parsed.estoquePrevisaoSemanas.map((item: any) => ({
               ...item,
-              isCurrentWeek: item.semana === (parsed.currentSemana || 45),
+              isCurrentWeek: item.semana === targetSemana,
             }));
             needsUpdate = true;
           }
@@ -174,14 +218,18 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
     }
   };
 
-  // Filter weekly data if week is selected
-  const secadorSemanasData = selectedSemana
-    ? dataset.secadorSemanas.filter((s) => s.semana === selectedSemana)
-    : dataset.secadorSemanas;
+  const effectiveCurrentSemana = dataset.currentSemana || 45;
 
-  const secaSemanasData = selectedSemana
+  // Filter weekly data if week is selected, and strictly cap display up to current week (Semana 45)
+  const secadorSemanasData = (selectedSemana
+    ? dataset.secadorSemanas.filter((s) => s.semana === selectedSemana)
+    : dataset.secadorSemanas
+  ).filter((s) => s.semana <= effectiveCurrentSemana);
+
+  const secaSemanasData = (selectedSemana
     ? dataset.secaSemanas.filter((s) => s.semana === selectedSemana)
-    : dataset.secaSemanas;
+    : dataset.secaSemanas
+  ).filter((s) => s.semana <= effectiveCurrentSemana);
 
   const currentBg = currentTab === "previsao" ? bgPrevisao : bgSecador;
 

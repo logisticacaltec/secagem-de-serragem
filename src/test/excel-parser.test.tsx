@@ -181,4 +181,87 @@ describe("Excel Parser", () => {
     expect(seca45).toBeDefined();
     expect(seca45?.volumeEntregue).toBeGreaterThan(0);
   });
+
+  it("strictly stops weekly series at current week (45) and excludes future weeks (50, 51, 52), and includes Novembro in MTD", () => {
+    const wb = XLSX.utils.book_new();
+
+    // Simular aba de previsão contendo linhas até semana 52
+    const pData = [
+      {
+        SEMANA: 44,
+        "PROJEÇÃO SERRAGEM SECADOR": 350,
+        "RECEBIMENTO S. SECADOR": 245,
+        "PROJEÇÃO SERRAGEM SECA": 745,
+        "RECEBIMENTO S. SECA": 569,
+      },
+      {
+        SEMANA: 45,
+        "PROJEÇÃO SERRAGEM SECADOR": 350,
+        "RECEBIMENTO S. SECADOR": 250,
+        "PROJEÇÃO SERRAGEM SECA": 745,
+        "RECEBIMENTO S. SECA": 585,
+      },
+      {
+        SEMANA: 50,
+        "PROJEÇÃO SERRAGEM SECADOR": 300,
+        "RECEBIMENTO S. SECADOR": 364,
+        "PROJEÇÃO SERRAGEM SECA": 985,
+        "RECEBIMENTO S. SECA": 0,
+      },
+      {
+        SEMANA: 51,
+        "PROJEÇÃO SERRAGEM SECADOR": 300,
+        "RECEBIMENTO S. SECADOR": 335,
+        "PROJEÇÃO SERRAGEM SECA": 960,
+        "RECEBIMENTO S. SECA": 0,
+      },
+      {
+        SEMANA: 52,
+        "PROJEÇÃO SERRAGEM SECADOR": 125,
+        "RECEBIMENTO S. SECADOR": 364,
+        "PROJEÇÃO SERRAGEM SECA": 960,
+        "RECEBIMENTO S. SECA": 0,
+      },
+    ];
+    const pWs = XLSX.utils.json_to_sheet(pData);
+    XLSX.utils.book_append_sheet(wb, pWs, "Previsão Semanal - Geral");
+
+    const mData = [
+      { PRODUTO: "SERRAGEM SECADOR", MÊS: "Outubro", "VOLUME ENTREGUE ": 1226, "VOLUME PREVISTO": 1650 },
+      { PRODUTO: "SERRAGEM SECADOR", MÊS: "Novembro", "VOLUME ENTREGUE ": 250, "VOLUME PREVISTO": 1650 },
+      { PRODUTO: "SERRAGEM SECA", MÊS: "Outubro", "VOLUME ENTREGUE ": 2334, "VOLUME PREVISTO": 2900 },
+      { PRODUTO: "SERRAGEM SECA", MÊS: "Novembro", "VOLUME ENTREGUE ": 585, "VOLUME PREVISTO": 2980 },
+    ];
+    const mWs = XLSX.utils.json_to_sheet(mData);
+    XLSX.utils.book_append_sheet(wb, mWs, "Mensal por fornecedor");
+
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    const result = parseExcelData(buf, "previsao_com_semana52.xlsx");
+
+    // A semana atual deve ser estritamente 45 (data da última entrada real de material)
+    expect(result.currentSemana).toBe(45);
+
+    // Gráfico 2 (Secador) e Gráfico 3 (Seca) NÃO devem conter semanas 50, 51, 52
+    expect(result.secadorSemanas.some((s) => s.semana > 45)).toBe(false);
+    expect(result.secaSemanas.some((s) => s.semana > 45)).toBe(false);
+    expect(result.secadorSemanas.some((s) => s.semana === 50)).toBe(false);
+    expect(result.secadorSemanas.some((s) => s.semana === 52)).toBe(false);
+
+    // O estoque da semana 52 NÃO deve ser semana atual
+    const sem52 = result.estoquePrevisaoSemanas.find((s) => s.semana === 52);
+    expect(sem52?.isCurrentWeek).toBe(false);
+
+    // A semana 45 deve ser a semana atual
+    const sem45 = result.estoquePrevisaoSemanas.find((s) => s.semana === 45);
+    expect(sem45?.isCurrentWeek).toBe(true);
+
+    // Gráfico 1 (MTD) deve conter o mês atual (Novembro)
+    const novSecador = result.secadorMtd.find((m) => m.mes.toLowerCase().includes("nov"));
+    expect(novSecador).toBeDefined();
+    expect(novSecador?.volumeEntregue).toBe(250);
+
+    const novSeca = result.secaMtd.find((m) => m.mes.toLowerCase().includes("nov"));
+    expect(novSeca).toBeDefined();
+    expect(novSeca?.volumeEntregue).toBe(585);
+  });
 });

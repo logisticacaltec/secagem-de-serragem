@@ -47,8 +47,9 @@ export const SERRAGEM_SECADOR_MTD: MesData[] = [
   { mes: "junho", volumeEntregue: 1537, volumePrevisto: 1550, variacaoPercent: 99 },
   { mes: "Julho", volumeEntregue: 1382, volumePrevisto: 1550, variacaoPercent: 89 },
   { mes: "Agosto", volumeEntregue: 1315, volumePrevisto: 1650, variacaoPercent: 80 },
-  { mes: "Setembro", volumeEntregue: 1291, volumePrevisto: 1650, variacaoPercent: 78 },
-  { mes: "Outubro", volumeEntregue: 929, volumePrevisto: 1350, variacaoPercent: 69 },
+  { mes: "Setembro", volumeEntregue: 1290, volumePrevisto: 1650, variacaoPercent: 78 },
+  { mes: "Outubro", volumeEntregue: 1226, volumePrevisto: 1650, variacaoPercent: 74 },
+  { mes: "Novembro", volumeEntregue: 250, volumePrevisto: 1650, variacaoPercent: 15 },
 ];
 
 export const SERRAGEM_SECADOR_FORNECEDORES: FornecedorData[] = [
@@ -85,6 +86,7 @@ export const SERRAGEM_SECA_MTD: MesData[] = [
   { mes: "Agosto", volumeEntregue: 2059, volumePrevisto: 3600, variacaoPercent: 57 },
   { mes: "Setembro", volumeEntregue: 2233, volumePrevisto: 2900, variacaoPercent: 77 },
   { mes: "Outubro", volumeEntregue: 2334, volumePrevisto: 2900, variacaoPercent: 80 },
+  { mes: "Novembro", volumeEntregue: 585, volumePrevisto: 2980, variacaoPercent: 20 },
 ];
 
 export const SERRAGEM_SECA_FORNECEDORES: FornecedorData[] = [

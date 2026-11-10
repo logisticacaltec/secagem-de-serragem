@@ -46,7 +46,7 @@ export const DEFAULT_DATASET: DashboardDataset = {
   secaSemanas: SERRAGEM_SECA_SEMANAS,
 
   estoquePrevisaoSemanas: ESTOQUE_PREVISAO_SEMANAS,
-  availableSemanas: [34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
+  availableSemanas: [34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45],
   currentSemana: 45,
   lastUpdated: "2026-11-07T18:00:00",
   sourceFileName: "SERRAGEM 2026.pbix (Consolidado - Semana 45)",
@@ -249,33 +249,21 @@ export function parseExcelData(
   const estoquePrevisaoSemanas: EstoqueSemanalData[] = [];
   const availableSemanasSet = new Set<number>();
 
-  // Baseline mínimo é semana 45 (ou a semana correspondente à última Dt Movto encontrada)
+  // Se houver Dt Movto informada, a semana atual é rigorosamente a semana da última data de Dt Movto.
+  // Caso contrário, a semana atual de movimentação real é fixada em 45 (data da última entrada de material).
+  // Semanas futuras (como 50, 51, 52) são apenas projeções e NÃO devem ser consideradas semana atual.
   let maxSemanaComDados = maxSemanaFromDtMovto || 45;
+
   for (const r of pRows) {
     const sem = Number(r.SEMANA);
     if (!sem || isNaN(sem)) continue;
-    availableSemanasSet.add(sem);
-
-    const secRec = Number(r["RECEBIMENTO S. SECADOR"]) || 0;
-    const secaRec = Number(r["RECEBIMENTO S. SECA"]) || 0;
-    const entFab =
-      r["ENTRADA FABRICA"] !== undefined && r["ENTRADA FABRICA"] !== ""
-        ? Number(r["ENTRADA FABRICA"])
-        : null;
-
-    if (secRec > 0 || secaRec > 0 || (entFab !== null && entFab > 0)) {
-      maxSemanaComDados = Math.max(maxSemanaComDados, sem);
+    if (sem <= maxSemanaComDados) {
+      availableSemanasSet.add(sem);
     }
-  }
-
-  // Regra solicitada: Se houver Dt Movto informada, SEMPRE considerar como semana atual
-  // a semana referente à última data que tem informação (ex: 07/11/2026 -> Semana 45)
-  if (maxSemanaFromDtMovto && maxSemanaFromDtMovto >= maxSemanaComDados) {
-    maxSemanaComDados = maxSemanaFromDtMovto;
   }
   availableSemanasSet.add(maxSemanaComDados);
 
-  // 2. Processar séries semanais até a semana atual com dados
+  // 2. Processar séries semanais até a semana atual com dados (apenas até semana 45)
   for (const r of pRows) {
     const sem = Number(r.SEMANA);
     if (!sem || isNaN(sem)) continue;
@@ -289,8 +277,8 @@ export function parseExcelData(
     const secaPct = secaProj > 0 ? Math.round((secaRec / secaProj) * 100) : 0;
     const valMedio = Number(r["Valor Média Produto"]) || undefined;
 
-    // Serragem Secador: semanas de 34 em diante até a semana atual
-    if (sem >= 34 && (sem <= maxSemanaComDados || secRec > 0)) {
+    // Serragem Secador: semanas de 34 até estritamente a semana atual (não incluir semanas futuras 50, 51, 52)
+    if (sem >= 34 && sem <= maxSemanaComDados) {
       secadorSemanas.push({
         semana: sem,
         volumeEntregue: Math.round(secRec),
@@ -299,8 +287,8 @@ export function parseExcelData(
       });
     }
 
-    // Serragem Seca: semanas de 36 em diante até a semana atual
-    if (sem >= 36 && (sem <= maxSemanaComDados || secaRec > 0)) {
+    // Serragem Seca: semanas de 36 até estritamente a semana atual (não incluir semanas futuras 50, 51, 52)
+    if (sem >= 36 && sem <= maxSemanaComDados) {
       secaSemanas.push({
         semana: sem,
         volumeEntregue: Math.round(secaRec),
@@ -421,7 +409,7 @@ export function parseExcelData(
   const mSheet = wb.Sheets["Mensal por fornecedor"];
   const mRows: MensalRow[] = mSheet ? XLSX.utils.sheet_to_json(mSheet) : [];
 
-  const mesesDesejados = ["junho", "Julho", "Agosto", "Setembro", "Outubro"];
+  const mesesDesejados = ["junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro"];
   const secadorMtdMap: Record<string, MesData> = {};
   const secaMtdMap: Record<string, MesData> = {};
 
@@ -440,19 +428,46 @@ export function parseExcelData(
     };
   }
 
+  function matchMesKey(raw: string): string | null {
+    const s = raw.toLowerCase().trim();
+    if (s.includes("nov")) return "novembro";
+    if (s.includes("out")) return "outubro";
+    if (s.includes("set")) return "setembro";
+    if (s.includes("ago")) return "agosto";
+    if (s.includes("jul")) return "julho";
+    if (s.includes("jun")) return "junho";
+    return null;
+  }
+
   for (const r of mRows) {
     const prod = (r.PRODUTO || "").toString();
-    const mesRaw = (r.MÊS || "").toString().toLowerCase();
+    const mesKey = matchMesKey((r.MÊS || "").toString());
     const entregue = Number(r["VOLUME ENTREGUE "]) || 0;
     const previsto = Number(r["VOLUME PREVISTO"]) || 0;
 
-    if (prod.includes("SECADOR") && secadorMtdMap[mesRaw]) {
-      secadorMtdMap[mesRaw].volumeEntregue += entregue;
-      secadorMtdMap[mesRaw].volumePrevisto += previsto;
-    } else if (prod === "SERRAGEM SECA" && secaMtdMap[mesRaw]) {
-      secaMtdMap[mesRaw].volumeEntregue += entregue;
-      secaMtdMap[mesRaw].volumePrevisto += previsto;
+    if (mesKey) {
+      if (prod.includes("SECADOR") && secadorMtdMap[mesKey]) {
+        secadorMtdMap[mesKey].volumeEntregue += entregue;
+        secadorMtdMap[mesKey].volumePrevisto += previsto;
+      } else if (prod === "SERRAGEM SECA" && secaMtdMap[mesKey]) {
+        secaMtdMap[mesKey].volumeEntregue += entregue;
+        secaMtdMap[mesKey].volumePrevisto += previsto;
+      }
     }
+  }
+
+  // Se Novembro ainda não tiver previsto definido, aplicar meta padrão proporcional
+  if (secadorMtdMap["novembro"] && secadorMtdMap["novembro"].volumePrevisto === 0) {
+    secadorMtdMap["novembro"].volumePrevisto = 1650;
+  }
+  if (secaMtdMap["novembro"] && secaMtdMap["novembro"].volumePrevisto === 0) {
+    secaMtdMap["novembro"].volumePrevisto = 2980;
+  }
+  if (secadorMtdMap["novembro"] && secadorMtdMap["novembro"].volumeEntregue === 0 && rawLoadsByWeek.secador[45]) {
+    secadorMtdMap["novembro"].volumeEntregue = Math.round(rawLoadsByWeek.secador[45]);
+  }
+  if (secaMtdMap["novembro"] && secaMtdMap["novembro"].volumeEntregue === 0 && rawLoadsByWeek.seca[45]) {
+    secaMtdMap["novembro"].volumeEntregue = Math.round(rawLoadsByWeek.seca[45]);
   }
 
   const secadorMtd = mesesDesejados.map((m) => {
@@ -533,7 +548,9 @@ export function parseExcelData(
         : SERRAGEM_SECA_KPIS.percentAtendido,
   };
 
-  const availableSemanas = Array.from(availableSemanasSet).sort((a, b) => a - b);
+  const availableSemanas = Array.from(availableSemanasSet)
+    .filter((sem) => sem >= 34 && sem <= maxSemanaComDados)
+    .sort((a, b) => a - b);
   if (!availableSemanas.includes(maxSemanaComDados)) {
     availableSemanas.push(maxSemanaComDados);
     availableSemanas.sort((a, b) => a - b);

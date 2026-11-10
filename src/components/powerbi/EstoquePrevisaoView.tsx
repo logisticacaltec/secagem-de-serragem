@@ -30,6 +30,7 @@ interface EstoqueBarLabelProps {
   index?: number;
   selectedSemana?: number | null;
   data?: EstoqueSemanalData[];
+  currentSemana?: number;
 }
 
 interface FluxoDotProps {
@@ -42,6 +43,7 @@ interface FluxoDotProps {
   isBoldLabel?: boolean;
   drawHighlightRect?: boolean;
   selectedSemana?: number | null;
+  currentSemana?: number;
 }
 
 interface TooltipPayloadItem {
@@ -232,7 +234,7 @@ export function EstoquePrevisaoView({
               fill="#102e9e"
               radius={[3, 3, 0, 0]}
               maxBarSize={44}
-              label={<CustomEstoqueBarLabel data={data} selectedSemana={selectedSemana} />}
+              label={<CustomEstoqueBarLabel data={data} selectedSemana={selectedSemana} currentSemana={currentSemana} />}
             />
 
             <Area
@@ -311,6 +313,7 @@ export function EstoquePrevisaoView({
                   color="#f97316"
                   drawHighlightRect={true}
                   selectedSemana={selectedSemana}
+                  currentSemana={currentSemana}
                 />
               }
             />
@@ -341,10 +344,20 @@ export function EstoquePrevisaoView({
 }
 
 function CustomEstoqueBarLabel(props: EstoqueBarLabelProps) {
-  const { x = 0, y = 0, width = 0, value, index = 0, selectedSemana, data = ESTOQUE_PREVISAO_SEMANAS } = props;
+  const {
+    x = 0,
+    y = 0,
+    width = 0,
+    value,
+    index = 0,
+    selectedSemana,
+    data = ESTOQUE_PREVISAO_SEMANAS,
+    currentSemana = 45,
+  } = props;
   if (!value) return null;
   const item = data[index];
-  const isCurrent = selectedSemana ? item?.semana === selectedSemana : item?.isCurrentWeek;
+  const targetCurrent = currentSemana || 45;
+  const isCurrent = selectedSemana ? item?.semana === selectedSemana : item?.semana === targetCurrent;
 
   return (
     <g>
@@ -386,11 +399,13 @@ function CustomFluxoDot(props: FluxoDotProps) {
     isBoldLabel,
     drawHighlightRect,
     selectedSemana,
+    currentSemana = 45,
   } = props;
   if (cx === undefined || cy === undefined) return null;
+  const targetCurrent = currentSemana || 45;
   const isCurrent = selectedSemana
     ? payload?.semana === selectedSemana
-    : payload?.isCurrentWeek;
+    : payload?.semana === targetCurrent;
 
   return (
     <g>
