@@ -47,10 +47,77 @@ export const DEFAULT_DATASET: DashboardDataset = {
 
   estoquePrevisaoSemanas: ESTOQUE_PREVISAO_SEMANAS,
   availableSemanas: [34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
-  currentSemana: 44,
-  lastUpdated: "2026-11-03T14:30:00",
-  sourceFileName: "SERRAGEM 2026.pbix (Consolidado)",
+  currentSemana: 45,
+  lastUpdated: "2026-11-07T18:00:00",
+  sourceFileName: "SERRAGEM 2026.pbix (Consolidado - Semana 45)",
 };
+
+/**
+ * Converte data para número da semana considerando domingo a sábado.
+ * Ex: 01/11/2026 (domingo) até 07/11/2026 (sábado) = Semana 45.
+ */
+export function getSundayToSaturdayWeekNumber(d: Date): number {
+  const year = d.getFullYear();
+  // Domingo correspondente à semana da data d:
+  const sunday = new Date(year, d.getMonth(), d.getDate() - d.getDay());
+
+  // Primeiro domingo da Semana 1 de 2026 (iniciada em 28/12/2025 e finalizada em 03/01/2026)
+  const w1Sunday = new Date(2025, 11, 28);
+  const diffDays = Math.round((sunday.getTime() - w1Sunday.getTime()) / (1000 * 60 * 60 * 24));
+  const weekNum = Math.floor(diffDays / 7) + 1;
+  return Math.max(1, Math.min(52, weekNum));
+}
+
+/**
+ * Converte valor de data de células do Excel (Date, serial numérico ou string DD/MM/AAAA)
+ */
+export function parseDateValue(val: any): Date | null {
+  if (val === null || val === undefined || val === "") return null;
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val;
+  }
+  if (typeof val === "number") {
+    // Número serial do Excel (ex: 46333 = 07/11/2026)
+    if (val > 30000 && val < 65000) {
+      return new Date(Math.round((val - 25569) * 86400 * 1000 + 12 * 3600 * 1000));
+    }
+  }
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    const num = parseFloat(trimmed);
+    if (!isNaN(num) && num > 30000 && num < 65000 && /^\d+(\.\d+)?$/.test(trimmed)) {
+      return new Date(Math.round((num - 25569) * 86400 * 1000 + 12 * 3600 * 1000));
+    }
+    const parts = trimmed.split(/[-/]/);
+    if (parts.length === 3) {
+      let y: number;
+      let m: number;
+      let day: number;
+      if (parts[0].length === 4) {
+        y = parseInt(parts[0], 10);
+        m = parseInt(parts[1], 10) - 1;
+        day = parseInt(parts[2], 10);
+      } else {
+        const p0 = parseInt(parts[0], 10);
+        const p1 = parseInt(parts[1], 10);
+        let p2 = parseInt(parts[2], 10);
+        if (parts[2].length === 2) p2 = 2000 + p2;
+        if (p1 > 12 && p0 <= 12) {
+          m = p0 - 1;
+          day = p1;
+          y = p2;
+        } else {
+          day = p0;
+          m = p1 - 1;
+          y = p2;
+        }
+      }
+      const d = new Date(y, m, day, 12, 0, 0);
+      return isNaN(d.getTime()) ? null : d;
+    }
+  }
+  return null;
+}
 
 interface PrevisaoRow {
   SEMANA?: number | string;
@@ -89,17 +156,101 @@ export function parseExcelData(
 ): DashboardDataset {
   const wb = XLSX.read(buffer, { type: "array" });
 
+  // 0. Varrer todas as abas procurando colunas de data como "Dt Movto", "Data Movimento", "Data"
+  let maxDateFound: Date | null = null;
+  let maxSemanaFromDtMovto: number | null = null;
+
+  // Acumuladores caso o arquivo seja uma planilha bruta de cargas (ex: ERP Caltec com Dt Movto)
+  const rawLoadsByWeek: {
+    seca: Record<number, number>;
+    secador: Record<number, number>;
+  } = { seca: {}, secador: {} };
+  const rawLoadsBySupplier: {
+    seca: Record<string, number>;
+    secador: Record<string, number>;
+  } = { seca: {}, secador: {} };
+  let rawLoadsTotalCount = 0;
+
+  for (const sheetName of wb.SheetNames) {
+    const ws = wb.Sheets[sheetName];
+    if (!ws) continue;
+    const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(ws);
+    if (!rows || rows.length === 0) continue;
+
+    const sample = rows[0];
+    const keys = Object.keys(sample);
+    const dtKey =
+      keys.find((k) => /^(dt[\s_.]*mov|data[\s_.]*mov|dtmovto|data$)/i.test(k.trim())) ||
+      keys.find((k) => /dt[\s_.]*mov/i.test(k.trim())) ||
+      keys.find((k) => /movto/i.test(k.trim()));
+
+    const descKey = keys.find((k) => /^(descri|produto|item[\s_.]*desc)/i.test(k.trim()));
+    const pesoKey = keys.find((k) => /^(peso[\s_.]*l[ií]quido|peso[\s_.]*liq|peso|volume|qtde)/i.test(k.trim()));
+    const fornecKey = keys.find((k) => /^(emitente|fornecedor|parceiro|cliente)/i.test(k.trim()));
+    const situacaoKey = keys.find((k) => /^(situa|status)/i.test(k.trim()));
+
+    if (dtKey) {
+      for (const r of rows) {
+        if (situacaoKey && String(r[situacaoKey] || "").toLowerCase().includes("cancel")) {
+          continue;
+        }
+
+        const dateVal = parseDateValue(r[dtKey]);
+        if (dateVal) {
+          if (!maxDateFound || dateVal.getTime() > maxDateFound.getTime()) {
+            maxDateFound = dateVal;
+          }
+          const weekNum = getSundayToSaturdayWeekNumber(dateVal);
+          maxSemanaFromDtMovto = Math.max(maxSemanaFromDtMovto || 0, weekNum);
+
+          if (descKey && pesoKey) {
+            const desc = String(r[descKey] || "").toUpperCase();
+            let rawPeso = r[pesoKey];
+            let pesoNum = 0;
+            if (typeof rawPeso === "number") {
+              pesoNum = rawPeso;
+            } else if (typeof rawPeso === "string") {
+              let clean = rawPeso.trim();
+              if (clean.includes(".") && clean.includes(",")) {
+                clean = clean.replace(/\./g, "").replace(",", ".");
+              } else if (clean.includes(",")) {
+                clean = clean.replace(",", ".");
+              }
+              pesoNum = parseFloat(clean) || 0;
+            }
+            // Converter de kg para ton se >= 100
+            const pesoTon = pesoNum >= 100 ? pesoNum / 1000 : pesoNum;
+            const fornec = fornecKey ? String(r[fornecKey] || "DIVERSOS").trim().toUpperCase() : "DIVERSOS";
+
+            if (pesoTon > 0) {
+              rawLoadsTotalCount++;
+              if (desc.includes("SECADOR")) {
+                rawLoadsByWeek.secador[weekNum] = (rawLoadsByWeek.secador[weekNum] || 0) + pesoTon;
+                rawLoadsBySupplier.secador[fornec] = (rawLoadsBySupplier.secador[fornec] || 0) + pesoTon;
+              } else if (desc.includes("SECA") || desc.includes("SERRAGEM")) {
+                rawLoadsByWeek.seca[weekNum] = (rawLoadsByWeek.seca[weekNum] || 0) + pesoTon;
+                rawLoadsBySupplier.seca[fornec] = (rawLoadsBySupplier.seca[fornec] || 0) + pesoTon;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   // 1. Process "Previsão Semanal - Geral"
   const pSheet = wb.Sheets["Previsão Semanal - Geral"];
   const pRows: PrevisaoRow[] = pSheet ? XLSX.utils.sheet_to_json(pSheet) : [];
 
   const secadorSemanas: SemanaData[] = [];
   const secaSemanas: SemanaData[] = [];
+  const secadorFornec: FornecedorData[] = [];
+  const secaFornec: FornecedorData[] = [];
   const estoquePrevisaoSemanas: EstoqueSemanalData[] = [];
   const availableSemanasSet = new Set<number>();
 
-  // 1. Identificar semanas disponíveis e a última semana com movimentação realizada
-  let maxSemanaComDados = 44; // Pelo menos semana 44
+  // Baseline mínimo é semana 45 (ou a semana correspondente à última Dt Movto encontrada)
+  let maxSemanaComDados = maxSemanaFromDtMovto || 45;
   for (const r of pRows) {
     const sem = Number(r.SEMANA);
     if (!sem || isNaN(sem)) continue;
@@ -116,6 +267,13 @@ export function parseExcelData(
       maxSemanaComDados = Math.max(maxSemanaComDados, sem);
     }
   }
+
+  // Regra solicitada: Se houver Dt Movto informada, SEMPRE considerar como semana atual
+  // a semana referente à última data que tem informação (ex: 07/11/2026 -> Semana 45)
+  if (maxSemanaFromDtMovto && maxSemanaFromDtMovto >= maxSemanaComDados) {
+    maxSemanaComDados = maxSemanaFromDtMovto;
+  }
+  availableSemanasSet.add(maxSemanaComDados);
 
   // 2. Processar séries semanais até a semana atual com dados
   for (const r of pRows) {
@@ -179,6 +337,85 @@ export function parseExcelData(
   secadorSemanas.sort((a, b) => a.semana - b.semana);
   secaSemanas.sort((a, b) => a.semana - b.semana);
   estoquePrevisaoSemanas.sort((a, b) => a.semana - b.semana);
+
+  // Se a planilha enviada não tiver a aba "Previsão Semanal - Geral", mas tiver cargas com "Dt Movto"
+  if (pRows.length === 0 && rawLoadsTotalCount > 0) {
+    const baseSecador = [...DEFAULT_DATASET.secadorSemanas];
+    const baseSeca = [...DEFAULT_DATASET.secaSemanas];
+
+    for (const [wStr, vol] of Object.entries(rawLoadsByWeek.secador)) {
+      const w = Number(wStr);
+      availableSemanasSet.add(w);
+      const existing = baseSecador.find((s) => s.semana === w);
+      if (existing) {
+        existing.volumeEntregue = Math.round(vol);
+        existing.percentAtendido =
+          existing.volumePrevisto > 0 ? Math.round((existing.volumeEntregue / existing.volumePrevisto) * 100) : 0;
+      } else {
+        baseSecador.push({
+          semana: w,
+          volumeEntregue: Math.round(vol),
+          volumePrevisto: 350,
+          percentAtendido: Math.round((vol / 350) * 100),
+        });
+      }
+    }
+
+    for (const [wStr, vol] of Object.entries(rawLoadsByWeek.seca)) {
+      const w = Number(wStr);
+      availableSemanasSet.add(w);
+      const existing = baseSeca.find((s) => s.semana === w);
+      if (existing) {
+        existing.volumeEntregue = Math.round(vol);
+        existing.percentAtendido =
+          existing.volumePrevisto > 0 ? Math.round((existing.volumeEntregue / existing.volumePrevisto) * 100) : 0;
+      } else {
+        baseSeca.push({
+          semana: w,
+          volumeEntregue: Math.round(vol),
+          volumePrevisto: 745,
+          valorMedio: 638,
+          percentAtendido: Math.round((vol / 745) * 100),
+        });
+      }
+    }
+
+    baseSecador.sort((a, b) => a.semana - b.semana);
+    baseSeca.sort((a, b) => a.semana - b.semana);
+
+    secadorSemanas.push(...baseSecador.filter((s) => s.semana <= maxSemanaComDados || s.volumeEntregue > 0));
+    secaSemanas.push(...baseSeca.filter((s) => s.semana <= maxSemanaComDados || s.volumeEntregue > 0));
+
+    for (const [fornec, vol] of Object.entries(rawLoadsBySupplier.secador)) {
+      secadorFornec.push({ fornecedor: fornec, volumeEntregue: Math.round(vol) });
+    }
+    for (const [fornec, vol] of Object.entries(rawLoadsBySupplier.seca)) {
+      secaFornec.push({ fornecedor: fornec, volumeEntregue: Math.round(vol) });
+    }
+  } else if (pRows.length > 0) {
+    // Se a semana da Dt Movto não estava na aba de previsão, garantir inclusão na série
+    if (rawLoadsByWeek.seca[maxSemanaComDados] && !secaSemanas.some((s) => s.semana === maxSemanaComDados)) {
+      const vol = rawLoadsByWeek.seca[maxSemanaComDados];
+      secaSemanas.push({
+        semana: maxSemanaComDados,
+        volumeEntregue: Math.round(vol),
+        volumePrevisto: 745,
+        valorMedio: 638,
+        percentAtendido: Math.round((vol / 745) * 100),
+      });
+      secaSemanas.sort((a, b) => a.semana - b.semana);
+    }
+    if (rawLoadsByWeek.secador[maxSemanaComDados] && !secadorSemanas.some((s) => s.semana === maxSemanaComDados)) {
+      const vol = rawLoadsByWeek.secador[maxSemanaComDados];
+      secadorSemanas.push({
+        semana: maxSemanaComDados,
+        volumeEntregue: Math.round(vol),
+        volumePrevisto: 350,
+        percentAtendido: Math.round((vol / 350) * 100),
+      });
+      secadorSemanas.sort((a, b) => a.semana - b.semana);
+    }
+  }
 
   // 2. Process "Mensal por fornecedor"
   const mSheet = wb.Sheets["Mensal por fornecedor"];
@@ -246,9 +483,6 @@ export function parseExcelData(
   const rSheet = wb.Sheets["Resumo por fornecedor"];
   const rRows: FornecedorRow[] = rSheet ? XLSX.utils.sheet_to_json(rSheet) : [];
 
-  const secadorFornec: FornecedorData[] = [];
-  const secaFornec: FornecedorData[] = [];
-
   for (const r of rRows) {
     const prod = (r.PRODUTO || "").toString();
     const nome = (r.FORNECEDOR || "").toString().trim();
@@ -300,6 +534,18 @@ export function parseExcelData(
   };
 
   const availableSemanas = Array.from(availableSemanasSet).sort((a, b) => a - b);
+  if (!availableSemanas.includes(maxSemanaComDados)) {
+    availableSemanas.push(maxSemanaComDados);
+    availableSemanas.sort((a, b) => a - b);
+  }
+
+  const finalEstoque =
+    estoquePrevisaoSemanas.length > 0
+      ? estoquePrevisaoSemanas
+      : ESTOQUE_PREVISAO_SEMANAS.map((item) => ({
+          ...item,
+          isCurrentWeek: item.semana === maxSemanaComDados,
+        }));
 
   return {
     secadorKpis,
@@ -312,8 +558,7 @@ export function parseExcelData(
     secaFornecedores: secaFornec.length > 0 ? secaFornec : SERRAGEM_SECA_FORNECEDORES,
     secaSemanas: secaSemanas.length > 0 ? secaSemanas : SERRAGEM_SECA_SEMANAS,
 
-    estoquePrevisaoSemanas:
-      estoquePrevisaoSemanas.length > 0 ? estoquePrevisaoSemanas : ESTOQUE_PREVISAO_SEMANAS,
+    estoquePrevisaoSemanas: finalEstoque,
     availableSemanas:
       availableSemanas.length > 0 ? availableSemanas : DEFAULT_DATASET.availableSemanas,
     currentSemana: maxSemanaComDados,

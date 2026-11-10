@@ -104,6 +104,81 @@ describe("Excel Parser", () => {
     const estoque44 = result.estoquePrevisaoSemanas.find((s) => s.semana === 44);
     expect(estoque44).toBeDefined();
     expect(estoque44?.estoque).toBe(2789);
-    expect(estoque44?.isCurrentWeek).toBe(true);
+  });
+
+  it("dynamically considers week 45 as current week when Dt Movto column has 07/11/2026", () => {
+    const wb = XLSX.utils.book_new();
+
+    // Planilha idêntica à foto enviada pelo usuário (cargas de Serragem Seca)
+    const cargasData = [
+      {
+        Est: 301,
+        "Nr Carga": "694547",
+        Emitente: "RCB",
+        Movimento: "Recebimento",
+        "Dt Movto": "06/11/2026",
+        Item: "100010003",
+        Descrição: "SERRAGEM SECA",
+        Docto: "0008105",
+        "Peso Líquido": "27.060",
+        Situação: "Atualizado",
+      },
+      {
+        Est: 301,
+        "Nr Carga": "694558",
+        Emitente: "RCB",
+        Movimento: "Recebimento",
+        "Dt Movto": "06/11/2026",
+        Item: "100010003",
+        Descrição: "SERRAGEM SECA",
+        Docto: "0008106",
+        "Peso Líquido": "26.600",
+        Situação: "Atualizado",
+      },
+      {
+        Est: 301,
+        "Nr Carga": "694573",
+        Emitente: "RCB",
+        Movimento: "Recebimento",
+        "Dt Movto": "07/11/2026",
+        Item: "100010003",
+        Descrição: "SERRAGEM SECA",
+        Docto: "0008112",
+        "Peso Líquido": "28.380",
+        Situação: "Atualizado",
+      },
+      {
+        Est: 301,
+        "Nr Carga": "694604",
+        Emitente: "RCB",
+        Movimento: "Recebimento",
+        "Dt Movto": "07/11/2026",
+        Item: "100010003",
+        Descrição: "SERRAGEM SECA",
+        Docto: "0008114",
+        "Peso Líquido": "27.840",
+        Situação: "Atualizado",
+      },
+    ];
+
+    const cWs = XLSX.utils.json_to_sheet(cargasData);
+    XLSX.utils.book_append_sheet(wb, cWs, "Cargas");
+
+    const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    const result = parseExcelData(buf, "cargas_serragem_0711.xlsx");
+
+    // Deve considerar semana 45 como semana atual
+    expect(result.currentSemana).toBe(45);
+    expect(result.availableSemanas).toContain(45);
+
+    // O estoque deve ter a semana 45 marcada como isCurrentWeek = true
+    const estoque45 = result.estoquePrevisaoSemanas.find((s) => s.semana === 45);
+    expect(estoque45).toBeDefined();
+    expect(estoque45?.isCurrentWeek).toBe(true);
+
+    // A série de Serragem Seca deve ter a semana 45 incluída
+    const seca45 = result.secaSemanas.find((s) => s.semana === 45);
+    expect(seca45).toBeDefined();
+    expect(seca45?.volumeEntregue).toBeGreaterThan(0);
   });
 });

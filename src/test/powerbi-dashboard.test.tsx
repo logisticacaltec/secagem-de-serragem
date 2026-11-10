@@ -18,12 +18,12 @@ describe("Power BI Data Integrity", () => {
     expect(SERRAGEM_SECA_KPIS.percentAtendido).toBeGreaterThanOrEqual(100);
   });
 
-  it("has week 44 marked as current week with exact numbers in Estoque e Previsão", () => {
-    const sem44 = ESTOQUE_PREVISAO_SEMANAS.find((s) => s.semana === 44);
-    expect(sem44).toBeDefined();
-    expect(sem44?.isCurrentWeek).toBe(true);
-    expect(sem44?.estoque).toBe(2789);
-    expect(sem44?.consumoCaltec).toBe(1150);
-    expect(sem44?.previsaoRecebimento).toBe(1150);
+  it("has week 45 marked as current week with exact numbers in Estoque e Previsão", () => {
+    const sem45 = ESTOQUE_PREVISAO_SEMANAS.find((s) => s.semana === 45);
+    expect(sem45).toBeDefined();
+    expect(sem45?.isCurrentWeek).toBe(true);
+    expect(sem45?.estoque).toBe(3394);
+    expect(sem45?.consumoCaltec).toBe(1150);
+    expect(sem45?.previsaoRecebimento).toBe(1150);
   });
 });

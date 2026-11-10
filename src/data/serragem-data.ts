@@ -69,6 +69,7 @@ export const SERRAGEM_SECADOR_SEMANAS: SemanaData[] = [
   { semana: 42, volumeEntregue: 220, volumePrevisto: 400, percentAtendido: 55 },
   { semana: 43, volumeEntregue: 264, volumePrevisto: 400, percentAtendido: 66 },
   { semana: 44, volumeEntregue: 245, volumePrevisto: 350, percentAtendido: 70 },
+  { semana: 45, volumeEntregue: 250, volumePrevisto: 350, percentAtendido: 71 },
 ];
 
 // 2. SERRAGEM SECA
@@ -145,6 +146,7 @@ export const SERRAGEM_SECA_SEMANAS: SemanaData[] = [
   { semana: 42, volumeEntregue: 558, volumePrevisto: 795, valorMedio: 624.62, percentAtendido: 70 },
   { semana: 43, volumeEntregue: 697, volumePrevisto: 745, valorMedio: 638.0, percentAtendido: 94 },
   { semana: 44, volumeEntregue: 569, volumePrevisto: 745, valorMedio: 638.0, percentAtendido: 76 },
+  { semana: 45, volumeEntregue: 585, volumePrevisto: 745, valorMedio: 638.0, percentAtendido: 79 },
 ];
 
 // 3. ESTOQUE E PREVISÃO
@@ -247,7 +249,6 @@ export const ESTOQUE_PREVISAO_SEMANAS: EstoqueSemanalData[] = [
     consumoCaltec: 1150,
     previsaoRecebimento: 1150,
     entradaFabrica: 814,
-    isCurrentWeek: true,
   },
   {
     semana: 45,
@@ -256,7 +257,8 @@ export const ESTOQUE_PREVISAO_SEMANAS: EstoqueSemanalData[] = [
     estoqueB02: 1450,
     consumoCaltec: 1150,
     previsaoRecebimento: 1150,
-    entradaFabrica: null,
+    entradaFabrica: 835,
+    isCurrentWeek: true,
   },
   {
     semana: 46,

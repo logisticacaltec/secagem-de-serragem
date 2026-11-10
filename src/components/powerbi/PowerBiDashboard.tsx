@@ -33,31 +33,43 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.secadorKpis && parsed.estoquePrevisaoSemanas) {
-          // Migração de compatibilidade para semana 44 caso o cache local tenha sido salvo pelo parser antigo
+          // Migração de compatibilidade para semana 45 caso o cache local tenha sido salvo pelo parser antigo
           let needsUpdate = false;
-          if (Array.isArray(parsed.secaSemanas) && !parsed.secaSemanas.some((s: any) => s.semana === 44)) {
+          if (Array.isArray(parsed.secaSemanas) && !parsed.secaSemanas.some((s: any) => s.semana === 45)) {
             parsed.secaSemanas.push({
-              semana: 44,
-              volumeEntregue: 569,
+              semana: 45,
+              volumeEntregue: 585,
               volumePrevisto: 745,
               valorMedio: 638,
-              percentAtendido: 76,
+              percentAtendido: 79,
             });
             parsed.secaSemanas.sort((a: any, b: any) => a.semana - b.semana);
             needsUpdate = true;
           }
-          if (Array.isArray(parsed.secadorSemanas) && !parsed.secadorSemanas.some((s: any) => s.semana === 44)) {
+          if (Array.isArray(parsed.secadorSemanas) && !parsed.secadorSemanas.some((s: any) => s.semana === 45)) {
             parsed.secadorSemanas.push({
-              semana: 44,
-              volumeEntregue: 245,
+              semana: 45,
+              volumeEntregue: 250,
               volumePrevisto: 350,
-              percentAtendido: 70,
+              percentAtendido: 71,
             });
             parsed.secadorSemanas.sort((a: any, b: any) => a.semana - b.semana);
             needsUpdate = true;
           }
-          if (!parsed.currentSemana || parsed.currentSemana < 44) {
-            parsed.currentSemana = 44;
+          if (!parsed.currentSemana || parsed.currentSemana < 45) {
+            parsed.currentSemana = 45;
+            needsUpdate = true;
+          }
+          if (Array.isArray(parsed.availableSemanas) && !parsed.availableSemanas.includes(45)) {
+            parsed.availableSemanas.push(45);
+            parsed.availableSemanas.sort((a: number, b: number) => a - b);
+            needsUpdate = true;
+          }
+          if (Array.isArray(parsed.estoquePrevisaoSemanas)) {
+            parsed.estoquePrevisaoSemanas = parsed.estoquePrevisaoSemanas.map((item: any) => ({
+              ...item,
+              isCurrentWeek: item.semana === (parsed.currentSemana || 45),
+            }));
             needsUpdate = true;
           }
           if (needsUpdate) {
@@ -215,7 +227,7 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
           selectedSemana={selectedSemana}
           onSemanaChange={setSelectedSemana}
           availableSemanas={dataset.availableSemanas}
-          currentSemana={dataset.currentSemana || 44}
+          currentSemana={dataset.currentSemana || 45}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
           onImportFile={handleImportFile}
@@ -367,6 +379,7 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
               data={dataset.estoquePrevisaoSemanas}
               selectedSemana={selectedSemana}
               onSelectSemana={setSelectedSemana}
+              currentSemana={dataset.currentSemana || 45}
             />
           </div>
         )}
@@ -381,7 +394,7 @@ export function PowerBiDashboard({ onOpenAdminView }: PowerBiDashboardProps = {}
           <div className="flex items-center gap-4 text-[10px]">
             <span>Fonte: {dataset.sourceFileName}</span>
             <span>•</span>
-            <span className="text-[#38bdf8]">Semana Atual: {dataset.currentSemana || 44}</span>
+            <span className="text-[#38bdf8]">Semana Atual: {dataset.currentSemana || 45}</span>
           </div>
         </footer>
       </div>

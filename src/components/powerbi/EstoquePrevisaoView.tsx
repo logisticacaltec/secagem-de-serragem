@@ -19,6 +19,7 @@ interface EstoquePrevisaoViewProps {
   data?: EstoqueSemanalData[];
   selectedSemana?: number | null;
   onSelectSemana?: (sem: number | null) => void;
+  currentSemana?: number;
 }
 
 interface EstoqueBarLabelProps {
@@ -60,11 +61,14 @@ export function EstoquePrevisaoView({
   data = ESTOQUE_PREVISAO_SEMANAS,
   selectedSemana,
   onSelectSemana,
+  currentSemana,
 }: EstoquePrevisaoViewProps) {
   const [hoveredSemana, setHoveredSemana] = useState<number | null>(null);
 
-  // Localizar a última semana atualizada com dados realizados na planilha
+  // Localizar a última semana atualizada com dados realizados na planilha (ou semana atual calculada)
   const latestUpdatedItem =
+    (currentSemana ? data.find((s) => s.semana === currentSemana) : null) ||
+    data.find((s) => s.isCurrentWeek) ||
     data
       .slice()
       .reverse()
@@ -74,7 +78,6 @@ export function EstoquePrevisaoView({
           d.entradaFabrica !== undefined &&
           d.entradaFabrica > 0
       ) ||
-    data.find((s) => s.isCurrentWeek) ||
     data[data.length - 1];
 
   const activeData = hoveredSemana

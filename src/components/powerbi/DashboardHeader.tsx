@@ -42,7 +42,7 @@ export function DashboardHeader({
   selectedSemana,
   onSemanaChange,
   availableSemanas,
-  currentSemana = 44,
+  currentSemana = 45,
   isFullscreen,
   onToggleFullscreen,
   onImportFile,
